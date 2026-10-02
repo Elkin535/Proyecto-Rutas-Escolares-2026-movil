@@ -1,13 +1,14 @@
 // src/constants/Colors.ts
 export const Colors = {
-  primary: '#FACC15',       // Amarillo bus escolar
-  primaryDark: '#EAB308',
-  dark: '#0F172A',          // Azul marino oscuro
-  darkText: '#1E293B',
-  mutedText: '#64748B',
-  placeholder: '#94A3B8',
-  background: '#F1F5F9',    // Gris claro de fondo
-  cardBackground: '#FFFFFF',
-  border: '#E2E8F0',
-  link: '#2563EB',
+  primary: '#00d4ff',       // Cyan accent
+  primaryDark: '#38bdf8',   // Lighter cyan/blue
+  dark: '#0f172a',          // Dark slate background for cards
+  darker: '#081120',        // Main app background
+  darkText: '#f8fafc',      // White text
+  mutedText: '#94a3b8',     // Subtitles
+  placeholder: '#64748b',   // Input placeholders
+  background: '#040c18',    // Very dark blue background
+  cardBackground: 'rgba(15, 23, 42, 0.75)', // Glassmorphism card
+  border: 'rgba(255, 255, 255, 0.1)',
+  link: '#00d4ff',
 };

@@ -1,5 +1,5 @@
-// src/app/login.tsx
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -13,18 +13,20 @@ import {
 } from 'react-native';
 
 import { Colors } from '../constants/Colors';
-import { styles } from './login.styles';
+import { styles } from '../styles/login.styles';
+import { fetchApi, saveAuthData } from '../services/api';
 
 type UserRole = 'acudiente' | 'conductor' | 'admin';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [role, setRole] = useState<UserRole>('acudiente');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Campos requeridos', 'Por favor ingresa tu correo y contraseña.');
       return;
@@ -32,13 +34,46 @@ export default function LoginScreen() {
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const response = await fetchApi('/Usuario/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          correo: email.trim(),
+          contrasena: password
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        Alert.alert('Error', errorData.mensaje || 'Correo o contraseña incorrectos');
+        return;
+      }
+
+      const data = await response.json();
+
+      // Guardamos el JWT y los datos del usuario usando nuestra nueva función
+      const jwtToken = data.token || data.Token;
+      if (jwtToken && jwtToken !== 'undefined' && jwtToken !== 'null') {
+        await saveAuthData(jwtToken, data);
+      }
+
+      const roleLower = (data.nombreRol || '').toLowerCase();
+
+      // Redirección al igual que en la web
+      if (roleLower.includes('admin') || roleLower.includes('administrador')) {
+        router.replace('/admin');
+      } else if (roleLower.includes('cond') || roleLower.includes('chofer')) {
+        router.replace('/conductor');
+      } else {
+        router.replace('/acudiente');
+      }
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error de conexión', 'No se pudo conectar al servidor. Inténtalo más tarde.');
+    } finally {
       setLoading(false);
-      Alert.alert(
-        '¡Acceso correcto (Simulado)!',
-        `Bienvenido como ${role.toUpperCase()}.\nCorreo: ${email}`
-      );
-    }, 1200);
+    }
   };
 
   return (

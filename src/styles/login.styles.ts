@@ -1,4 +1,3 @@
-
 import { StyleSheet } from 'react-native';
 import { Colors } from '../constants/Colors';
 
@@ -19,26 +18,21 @@ export const styles = StyleSheet.create({
     marginBottom: 24,
   },
   iconCircle: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: Colors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    elevation: 4,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   busIcon: {
-    fontSize: 42,
+    fontSize: 28,
   },
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: Colors.dark,
+    color: Colors.primary,
   },
   subtitle: {
     fontSize: 13,
@@ -48,16 +42,18 @@ export const styles = StyleSheet.create({
   roleLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
+    color: Colors.placeholder,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   roleSelector: {
     flexDirection: 'row',
-    backgroundColor: Colors.border,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     borderRadius: 14,
     padding: 4,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   roleButton: {
     flex: 1,
@@ -69,7 +65,9 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   roleButtonActive: {
-    backgroundColor: Colors.dark,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: Colors.primary,
+    borderWidth: 1,
   },
   roleIconText: {
     fontSize: 14,
@@ -80,23 +78,21 @@ export const styles = StyleSheet.create({
     color: Colors.mutedText,
   },
   roleTextActive: {
-    color: '#FFFFFF',
+    color: Colors.primary,
   },
   card: {
     backgroundColor: Colors.cardBackground,
-    borderRadius: 20,
-    padding: 22,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   inputLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.darkText,
+    color: Colors.mutedText,
     marginBottom: 6,
+    textTransform: 'uppercase',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -104,7 +100,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     marginBottom: 16,
     paddingHorizontal: 12,
   },
@@ -116,7 +112,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 14,
-    color: Colors.dark,
+    color: Colors.darkText,
   },
   eyeButton: {
     padding: 6,
@@ -139,13 +135,12 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 2,
   },
   loginButtonDisabled: {
     opacity: 0.6,
   },
   loginButtonText: {
-    color: Colors.dark,
+    color: '#040c18',
     fontSize: 15,
     fontWeight: '700',
   },
