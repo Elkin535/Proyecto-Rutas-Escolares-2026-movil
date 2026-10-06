@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,8 +14,8 @@ import {
 } from 'react-native';
 
 import { Colors } from '../constants/Colors';
-import { styles } from '../styles/login.styles';
 import { fetchApi, saveAuthData } from '../services/api';
+import { styles } from '../styles/login.styles';
 
 type UserRole = 'acudiente' | 'conductor' | 'admin';
 
@@ -119,7 +120,7 @@ export default function LoginScreen() {
         <View style={styles.card}>
           <Text style={styles.inputLabel}>Correo Institucional</Text>
           <View style={styles.inputWrapper}>
-            <Text style={styles.fieldIcon}>✉️</Text>
+            <Text style={styles.fieldIcon}></Text>
             <TextInput
               style={styles.input}
               placeholder="usuario@colegio.edu.co"
@@ -133,7 +134,7 @@ export default function LoginScreen() {
 
           <Text style={styles.inputLabel}>Contraseña</Text>
           <View style={styles.inputWrapper}>
-            <Text style={styles.fieldIcon}>🔒</Text>
+            <Text style={styles.fieldIcon}></Text>
             <TextInput
               style={styles.input}
               placeholder="••••••••"
@@ -142,13 +143,19 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
             />
+
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeButton}
             >
-              <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
+          <Ionicons 
+          name={showPassword ? 'eye-outline' : 'eye-off-outline'} 
+          size={20} 
+          color={Colors.placeholder || '#888'} 
+            />
+          </TouchableOpacity>
           </View>
+
 
           <TouchableOpacity
             style={styles.forgotPassword}
@@ -166,7 +173,7 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color={Colors.dark} />
             ) : (
-              <Text style={styles.loginButtonText}>Ingresar al Sistema</Text>
+              <Text style={styles.loginButtonText}>Iniciar sesion</Text>
             )}
           </TouchableOpacity>
         </View>
