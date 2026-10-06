@@ -148,18 +148,18 @@ export default function LoginScreen() {
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeButton}
             >
-          <Ionicons 
-          name={showPassword ? 'eye-outline' : 'eye-off-outline'} 
-          size={20} 
-          color={Colors.placeholder || '#888'} 
-            />
-          </TouchableOpacity>
+              <Ionicons
+                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={20}
+                color={Colors.placeholder || '#888'}
+              />
+            </TouchableOpacity>
           </View>
 
 
           <TouchableOpacity
             style={styles.forgotPassword}
-            onPress={() => Alert.alert('Ayuda', 'Comunícate con la administración.')}
+            onPress={() => router.push('/forgot-password')}
           >
             <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
