@@ -120,6 +120,79 @@ export const styles = StyleSheet.create({
   eyeText: {
     fontSize: 16,
   },
+  rememberContainer: {
+    marginBottom: 16,
+    position: 'relative',
+    zIndex: 10,
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rememberCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#00d4ff', // Celeste/cyan como en la captura
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#00d4ff',
+    borderColor: '#00d4ff',
+  },
+  rememberLabel: {
+    fontSize: 13,
+    color: Colors.darkText,
+    fontWeight: '500',
+  },
+  infoButton: {
+    padding: 4,
+  },
+  // Recuadro estilo Steam
+  tooltipWrapper: {
+    marginTop: 8,
+    position: 'relative',
+  },
+  tooltipArrow: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderBottomWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#cbd5e1',
+    marginLeft: 6,
+  },
+  tooltipBox: {
+    backgroundColor: '#cbd5e1', // Fondo gris claro idéntico a Steam
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  tooltipText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#1e293b', // Texto oscuro legible de Steam
+    fontWeight: '500',
+  },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 20,

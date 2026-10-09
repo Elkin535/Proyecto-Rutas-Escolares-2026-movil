@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +25,38 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberSession, setRememberSession] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const [loading, setLoading] = useState(false);
+  const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleToggleRemember = () => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+      tooltipTimeoutRef.current = null;
+    }
+
+    const nextVal = !rememberSession;
+    setRememberSession(nextVal);
+
+    if (nextVal) {
+      // Aparece al seleccionar el cuadro, dura 2 segundos y se quita solo
+      setShowTooltip(true);
+      tooltipTimeoutRef.current = setTimeout(() => {
+        setShowTooltip(false);
+      }, 2000);
+    } else {
+      setShowTooltip(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -55,7 +86,7 @@ export default function LoginScreen() {
       // Guardamos el JWT y los datos del usuario usando nuestra nueva función
       const jwtToken = data.token || data.Token;
       if (jwtToken && jwtToken !== 'undefined' && jwtToken !== 'null') {
-        await saveAuthData(jwtToken, data);
+        await saveAuthData(jwtToken, data, rememberSession);
       }
 
       const roleLower = (data.nombreRol || '').toLowerCase();
@@ -156,6 +187,34 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+
+          {/* Guardar inicio de sesión */}
+          <View style={styles.rememberContainer}>
+            <TouchableOpacity
+              style={styles.rememberCheckboxRow}
+              activeOpacity={0.7}
+              onPress={handleToggleRemember}
+            >
+              <View style={[styles.checkbox, rememberSession && styles.checkboxChecked]}>
+                {rememberSession && (
+                  <Ionicons name="checkmark" size={15} color="#040c18" />
+                )}
+              </View>
+              <Text style={styles.rememberLabel}>Guardar inicio de sesión</Text>
+            </TouchableOpacity>
+
+            {/* Recuadro que aparece únicamente al seleccionar el cuadro y dura 2 segundos */}
+            {showTooltip && (
+              <View style={styles.tooltipWrapper}>
+                <View style={styles.tooltipArrow} />
+                <View style={styles.tooltipBox}>
+                  <Text style={styles.tooltipText}>
+                    La próxima vez que abras SchoolTrack no necesitarás escribir tu contraseña ni confirmar el inicio de sesión.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
 
           <TouchableOpacity
             style={styles.forgotPassword}
