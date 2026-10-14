@@ -208,24 +208,24 @@ export default function ForgotPasswordScreen() {
       >
         {/* Barra superior de navegación */}
         <View style={styles.topNavigation}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => {
-              if (step === 'newPassword') {
-                setStep('code');
-              } else if (step === 'code') {
-                setStep('email');
-              } else {
-                router.back();
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={20} color={Colors.primary} />
-            <Text style={styles.backButtonText}>
-              {step === 'email' ? 'Volver al login' : 'Atrás'}
-            </Text>
-          </TouchableOpacity>
+          {step !== 'newPassword' && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                if (step === 'code') {
+                  setStep('email');
+                } else {
+                  router.back();
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={20} color={Colors.primary} />
+              <Text style={styles.backButtonText}>
+                {step === 'email' ? 'Volver al login' : 'Atrás'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Cabecera visual */}
@@ -356,15 +356,12 @@ export default function ForgotPasswordScreen() {
               Ingresa el código de 8 dígitos que enviamos a tu correo institucional.
             </Text>
 
-            {/* Email al que se envió con opción de editar */}
+            {/* Email al que se envió */}
             <View style={styles.emailBadge}>
               <Ionicons name="mail" size={15} color={Colors.primary} />
               <Text style={styles.emailBadgeText} numberOfLines={1}>
                 {email}
               </Text>
-              <TouchableOpacity onPress={() => setStep('email')}>
-                <Text style={styles.changeEmailText}>Cambiar</Text>
-              </TouchableOpacity>
             </View>
 
             {/* Banner de ayuda rápida para frontend demo */}
