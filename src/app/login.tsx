@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +18,11 @@ import { fetchApi, saveAuthData } from '../services/api';
 import { styles } from '../styles/login.styles';
 
 type UserRole = 'acudiente' | 'conductor' | 'admin';
+type ErrorField = 'email' | 'password' | 'both' | null;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// El driver nativo de animaciones no existe en web
+const useNativeDriver = Platform.OS !== 'web';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -29,6 +34,42 @@ export default function LoginScreen() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [loading, setLoading] = useState(false);
   const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [error, setError] = useState<{ title: string; message: string; field: ErrorField } | null>(null);
+  const errorAnim = useRef(new Animated.Value(0)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  // Alert.alert no se muestra en web, por eso el error va dentro de la tarjeta
+  const showError = (title: string, message: string, field: ErrorField = null) => {
+    setError({ title, message, field });
+    errorAnim.setValue(0);
+    shakeAnim.setValue(0);
+    Animated.parallel([
+      Animated.spring(errorAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver }),
+      Animated.sequence(
+        [10, -10, 7, -7, 3, 0].map((toValue) =>
+          Animated.timing(shakeAnim, { toValue, duration: 55, useNativeDriver })
+        )
+      ),
+    ]).start();
+  };
+
+  const hideError = () => {
+    if (!error) return;
+    Animated.timing(errorAnim, { toValue: 0, duration: 180, useNativeDriver }).start(() => setError(null));
+  };
+
+  const onChangeEmail = (text: string) => {
+    setEmail(text);
+    hideError();
+  };
+
+  const onChangePassword = (text: string) => {
+    setPassword(text);
+    hideError();
+  };
+
+  const emailHasError = error?.field === 'email' || error?.field === 'both';
+  const passwordHasError = error?.field === 'password' || error?.field === 'both';
 
   useEffect(() => {
     return () => {
@@ -60,7 +101,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Campos requeridos', 'Por favor ingresa tu correo y contraseña.');
+      const field: ErrorField = !email.trim() && !password.trim() ? 'both' : !email.trim() ? 'email' : 'password';
+      showError('Campos requeridos', 'Por favor ingresa tu correo y contraseña.', field);
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(email.trim())) {
+      showError('Correo inválido', 'Escribe un correo válido, por ejemplo usuario@colegio.edu.co', 'email');
       return;
     }
 
@@ -77,7 +124,18 @@ export default function LoginScreen() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        Alert.alert('Error', errorData.mensaje || 'Correo o contraseña incorrectos');
+        if (response.status === 401) {
+          // El backend no distingue usuario inexistente de contraseña errada (evita revelar qué correos existen)
+          showError(
+            'Credenciales incorrectas',
+            'El correo no está registrado o la contraseña es incorrecta. Verifica e inténtalo de nuevo.',
+            'both'
+          );
+        } else if (response.status === 400) {
+          showError('Datos inválidos', 'Revisa que el correo y la contraseña estén bien escritos.', 'both');
+        } else {
+          showError('Error del servidor', errorData.mensaje || 'Ocurrió un problema. Inténtalo más tarde.');
+        }
         return;
       }
 
@@ -102,7 +160,7 @@ export default function LoginScreen() {
 
     } catch (error) {
       console.error(error);
-      Alert.alert('Error de conexión', 'No se pudo conectar al servidor. Inténtalo más tarde.');
+      showError('Sin conexión', 'No se pudo conectar al servidor. Revisa tu internet e inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -148,9 +206,36 @@ export default function LoginScreen() {
         </View>
 
         {/* Tarjeta del Formulario */}
-        <View style={styles.card}>
+        <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnim }] }]}>
+          {error && (
+            <Animated.View
+              accessibilityRole="alert"
+              style={[
+                styles.errorBanner,
+                {
+                  opacity: errorAnim,
+                  transform: [
+                    { translateY: errorAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) },
+                    { scale: errorAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) },
+                  ],
+                },
+              ]}
+            >
+              <View style={styles.errorIconCircle}>
+                <Ionicons name="alert-circle" size={22} color={Colors.error} />
+              </View>
+              <View style={styles.errorTextContainer}>
+                <Text style={styles.errorTitle}>{error.title}</Text>
+                <Text style={styles.errorMessage}>{error.message}</Text>
+              </View>
+              <TouchableOpacity onPress={hideError} hitSlop={10} accessibilityLabel="Cerrar mensaje">
+                <Ionicons name="close" size={18} color={Colors.mutedText} />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
           <Text style={styles.inputLabel}>Correo Institucional</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, emailHasError && styles.inputWrapperError]}>
             <Text style={styles.fieldIcon}></Text>
             <TextInput
               style={styles.input}
@@ -159,12 +244,12 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={onChangeEmail}
             />
           </View>
 
           <Text style={styles.inputLabel}>Contraseña</Text>
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, passwordHasError && styles.inputWrapperError]}>
             <Text style={styles.fieldIcon}></Text>
             <TextInput
               style={styles.input}
@@ -172,7 +257,7 @@ export default function LoginScreen() {
               placeholderTextColor={Colors.placeholder}
               secureTextEntry={!showPassword}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={onChangePassword}
             />
 
             <TouchableOpacity
@@ -235,7 +320,7 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>Iniciar sesion</Text>
             )}
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>

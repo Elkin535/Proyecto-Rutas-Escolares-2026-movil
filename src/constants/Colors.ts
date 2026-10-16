@@ -11,4 +11,5 @@ export const Colors = {
   cardBackground: 'rgba(15, 23, 42, 0.75)', // Glassmorphism card
   border: 'rgba(255, 255, 255, 0.1)',
   link: '#00d4ff',
+  error: '#f87171',         // Rojo suave para mensajes de error
 };

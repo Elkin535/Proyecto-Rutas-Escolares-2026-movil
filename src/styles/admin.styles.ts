@@ -1,0 +1,212 @@
+import { StyleSheet } from 'react-native';
+import { Colors } from '../constants/Colors';
+
+// Colores de las métricas, iguales a Admin.css del front web
+export const MetricColors = {
+  routes: '#3b82f6',
+  drivers: '#f59e0b',
+  vehicles: '#10b981',
+  students: '#8b5cf6',
+  danger: '#ef4444',
+};
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 14,
+  },
+  headerSubtitle: {
+    color: Colors.mutedText,
+    fontSize: 13,
+  },
+  headerTitle: {
+    color: Colors.darkText,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  logoutButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabsRow: {
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingBottom: 12,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  tabActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  tabText: {
+    color: Colors.mutedText,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: Colors.darker,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  sectionTitle: {
+    color: Colors.darkText,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  metricCard: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    padding: 16,
+    gap: 10,
+  },
+  metricIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricValue: {
+    color: Colors.darkText,
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  metricLabel: {
+    color: Colors.mutedText,
+    fontSize: 13,
+  },
+  shortcut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+  },
+  shortcutText: {
+    flex: 1,
+    color: Colors.darkText,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    color: Colors.darkText,
+    paddingVertical: 11,
+    fontSize: 14,
+  },
+  countText: {
+    color: Colors.mutedText,
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.cardBackground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    gap: 12,
+  },
+  cardBody: {
+    flex: 1,
+    gap: 3,
+  },
+  cardTitle: {
+    color: Colors.darkText,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cardLine: {
+    color: Colors.mutedText,
+    fontSize: 13,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+  },
+  badgeText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  deleteButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 10,
+  },
+  emptyText: {
+    color: Colors.mutedText,
+    fontSize: 14,
+  },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+});

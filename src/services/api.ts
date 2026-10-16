@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// IMPORTANTE: En el móvil no puedes usar localhost, usa la IP de tu PC
-// Reemplaza TU_PUERTO por el puerto de tu backend (ej. 5000, 7152)
-export const API_URL = 'http://192.168.100.17:TU_PUERTO/api';
+// Backend desplegado en AWS EC2 (IP pública). Para probar contra tu PC usa http://<IP-de-tu-PC>:5110/api
+export const API_URL = 'http://18.220.127.242:5000/api';
 
 /**
  * Función genérica para hacer peticiones al backend con el Token inyectado
