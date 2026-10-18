@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '../../constants/Colors';
+import { HamburgerMenu } from '../../components/HamburgerMenu';
 import { clearAuthData, fetchApi, getStoredAuthData } from '../../services/api';
 import { MetricColors, styles } from '../../styles/admin.styles';
 
@@ -71,6 +72,7 @@ export default function AdminScreen() {
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
   const [nombreAdmin, setNombreAdmin] = useState('');
+  const [usuarioAdmin, setUsuarioAdmin] = useState<any>(null);
 
   const [metricas, setMetricas] = useState<any>({});
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -103,7 +105,10 @@ export default function AdminScreen() {
   }, []);
 
   useEffect(() => {
-    getStoredAuthData().then(({ usuario }) => setNombreAdmin(usuario?.nombre || 'Administrador'));
+    getStoredAuthData().then(({ usuario }) => {
+      setUsuarioAdmin(usuario);
+      setNombreAdmin(usuario?.nombre || 'Administrador');
+    });
     cargarTodo().finally(() => setCargando(false));
   }, [cargarTodo]);
 
@@ -251,9 +256,16 @@ export default function AdminScreen() {
           <Text style={styles.headerSubtitle}>Hola, {nombreAdmin} 👋</Text>
           <Text style={styles.headerTitle}>Panel Administrativo</Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={cerrarSesion} accessibilityLabel="Cerrar sesión">
-          <Ionicons name="log-out-outline" size={22} color={MetricColors.danger} />
-        </TouchableOpacity>
+        <HamburgerMenu
+          userName={
+            usuarioAdmin
+              ? `${usuarioAdmin.nombre || ''} ${usuarioAdmin.apellido || ''}`.trim() || nombreAdmin
+              : nombreAdmin
+          }
+          userEmail={usuarioAdmin?.correo || 'admin@schooltrack.com'}
+          userRole={usuarioAdmin?.nombreRol || 'Administrador'}
+          onLogout={cerrarSesion}
+        />
       </View>
 
       <View>
