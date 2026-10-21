@@ -17,7 +17,6 @@ import { Colors } from '../constants/Colors';
 import { fetchApi, saveAuthData } from '../services/api';
 import { styles } from '../styles/login.styles';
 
-type UserRole = 'acudiente' | 'conductor' | 'admin';
 type ErrorField = 'email' | 'password' | 'both' | null;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,7 +25,6 @@ const useNativeDriver = Platform.OS !== 'web';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [role, setRole] = useState<UserRole>('acudiente');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -185,25 +183,6 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Rutas y Transporte Escolar</Text>
         </View>
 
-        {/* Selector de Rol */}
-        <Text style={styles.roleLabel}>Selecciona tu perfil:</Text>
-        <View style={styles.roleSelector}>
-          {(['acudiente', 'conductor', 'admin'] as UserRole[]).map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={[styles.roleButton, role === item && styles.roleButtonActive]}
-              onPress={() => setRole(item)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.roleIconText}>
-                {item === 'acudiente' ? '👨‍👩‍👦' : item === 'conductor' ? '🚐' : '🛡️'}
-              </Text>
-              <Text style={[styles.roleText, role === item && styles.roleTextActive]}>
-                {item.charAt(0).toUpperCase() + item.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
 
         {/* Tarjeta del Formulario */}
         <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnim }] }]}>

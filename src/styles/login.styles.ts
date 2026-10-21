@@ -39,47 +39,6 @@ export const styles = StyleSheet.create({
     color: Colors.mutedText,
     marginTop: 3,
   },
-  roleLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.placeholder,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  roleSelector: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  roleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 4,
-  },
-  roleButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderColor: Colors.primary,
-    borderWidth: 1,
-  },
-  roleIconText: {
-    fontSize: 14,
-  },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.mutedText,
-  },
-  roleTextActive: {
-    color: Colors.primary,
-  },
   card: {
     backgroundColor: Colors.cardBackground,
     borderRadius: 24,
