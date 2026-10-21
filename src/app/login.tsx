@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '../constants/Colors';
-import { fetchApi, saveAuthData } from '../services/api';
+import { fetchApi, getRoleRoute, saveAuthData } from '../services/api';
 import { styles } from '../styles/login.styles';
 
 type ErrorField = 'email' | 'password' | 'both' | null;
@@ -23,12 +23,43 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // El driver nativo de animaciones no existe en web
 const useNativeDriver = Platform.OS !== 'web';
 
+// Credenciales demo para pruebas rápidas
+const DEMO_USERS: Record<string, { contrasena: string; data: any }> = {
+  'acudiente@colegio.edu.co': {
+    contrasena: '12345678',
+    data: {
+      token: 'jwt-demo-token-acudiente',
+      nombre: 'María Gómez',
+      correo: 'acudiente@colegio.edu.co',
+      nombreRol: 'Acudiente',
+    },
+  },
+  'conductor@colegio.edu.co': {
+    contrasena: '12345678',
+    data: {
+      token: 'jwt-demo-token-conductor',
+      nombre: 'Roberto Rodríguez',
+      correo: 'conductor@colegio.edu.co',
+      nombreRol: 'Conductor',
+    },
+  },
+  'admin@colegio.edu.co': {
+    contrasena: '12345678',
+    data: {
+      token: 'jwt-demo-token-admin',
+      nombre: 'Laura Martínez',
+      correo: 'admin@colegio.edu.co',
+      nombreRol: 'Administrador',
+    },
+  },
+};
+
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberSession, setRememberSession] = useState(false);
+  const [rememberSession, setRememberSession] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
   const [loading, setLoading] = useState(false);
   const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,13 +129,16 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      const field: ErrorField = !email.trim() && !password.trim() ? 'both' : !email.trim() ? 'email' : 'password';
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      const field: ErrorField = !trimmedEmail && !trimmedPassword ? 'both' : !trimmedEmail ? 'email' : 'password';
       showError('Campos requeridos', 'Por favor ingresa tu correo y contraseña.', field);
       return;
     }
 
-    if (!EMAIL_REGEX.test(email.trim())) {
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
       showError('Correo inválido', 'Escribe un correo válido, por ejemplo usuario@colegio.edu.co', 'email');
       return;
     }
@@ -112,18 +146,26 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
+      // 1. Verificación de cuentas demo de desarrollo
+      const demoAccount = DEMO_USERS[trimmedEmail.toLowerCase()];
+      if (demoAccount && demoAccount.contrasena === trimmedPassword) {
+        await saveAuthData(demoAccount.data.token, demoAccount.data, rememberSession);
+        router.replace(getRoleRoute(demoAccount.data.nombreRol));
+        return;
+      }
+
+      // 2. Conexión con el backend en AWS EC2
       const response = await fetchApi('/Usuario/login', {
         method: 'POST',
         body: JSON.stringify({
-          correo: email.trim(),
-          contrasena: password
+          correo: trimmedEmail,
+          contrasena: trimmedPassword,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         if (response.status === 401) {
-          // El backend no distingue usuario inexistente de contraseña errada (evita revelar qué correos existen)
           showError(
             'Credenciales incorrectas',
             'El correo no está registrado o la contraseña es incorrecta. Verifica e inténtalo de nuevo.',
@@ -139,26 +181,22 @@ export default function LoginScreen() {
 
       const data = await response.json();
 
-      // Guardamos el JWT y los datos del usuario usando nuestra nueva función
+      // Guardamos el JWT y los datos del usuario usando almacenamiento persistente
       const jwtToken = data.token || data.Token;
       if (jwtToken && jwtToken !== 'undefined' && jwtToken !== 'null') {
         await saveAuthData(jwtToken, data, rememberSession);
       }
 
-      const roleLower = (data.nombreRol || '').toLowerCase();
-
-      // Redirección al igual que en la web
-      if (roleLower.includes('admin') || roleLower.includes('administrador')) {
-        router.replace('/admin');
-      } else if (roleLower.includes('cond') || roleLower.includes('chofer')) {
-        router.replace('/conductor');
-      } else {
-        router.replace('/acudiente');
-      }
+      // Redirección centralizada por rol
+      const rol = data.nombreRol || data.rol || data.Rol;
+      router.replace(getRoleRoute(rol));
 
     } catch (error) {
       console.error(error);
-      showError('Sin conexión', 'No se pudo conectar al servidor. Revisa tu internet e inténtalo de nuevo.');
+      showError(
+        'Sin conexión',
+        'No se pudo conectar al servidor. Revisa tu internet o utiliza las credenciales demo para pruebas.'
+      );
     } finally {
       setLoading(false);
     }
@@ -182,7 +220,6 @@ export default function LoginScreen() {
           <Text style={styles.title}>SchoolTrack</Text>
           <Text style={styles.subtitle}>Rutas y Transporte Escolar</Text>
         </View>
-
 
         {/* Tarjeta del Formulario */}
         <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnim }] }]}>
@@ -251,7 +288,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-
           {/* Guardar inicio de sesión */}
           <View style={styles.rememberContainer}>
             <TouchableOpacity
@@ -296,7 +332,7 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color={Colors.dark} />
             ) : (
-              <Text style={styles.loginButtonText}>Iniciar sesion</Text>
+              <Text style={styles.loginButtonText}>Iniciar sesión</Text>
             )}
           </TouchableOpacity>
         </Animated.View>
