@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,10 +18,11 @@ import BottomNav from '../../components/BottomNav';
 import DisenadorRuta from '../../components/DisenadorRuta';
 import FormModal, { Campo, Valores } from '../../components/FormModal';
 import MapaRuta, { ParadaMapa } from '../../components/MapaRuta';
+import MenuUsuario from '../../components/MenuUsuario';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
 import { API_URL, fetchApi, getJson, getStoredAuthData } from '../../services/api';
-import { cerrarSesionCompleta, registrarPush } from '../../services/push';
+import { registrarPush } from '../../services/push';
 import { registrarRostro, tomarFotoBase64 } from '../../services/rostros';
 import { placaDeRuta } from '../../services/ruta';
 import { MetricColors, styles } from '../../styles/admin.styles';
@@ -90,7 +90,6 @@ const entero = (v?: string) => (v ? parseInt(v, 10) : null);
 const fechaIso = (v?: string) => (v ? new Date(`${v}T00:00:00`).toISOString() : null);
 
 export default function AdminScreen() {
-  const router = useRouter();
   const [vista, setVista] = useState('inicio');
   const [tab, setTab] = useState<Tab>('resumen');
   const [search, setSearch] = useState('');
@@ -204,11 +203,6 @@ export default function AdminScreen() {
     setRefrescando(true);
     await cargarTodo();
     setRefrescando(false);
-  };
-
-  const cerrarSesion = async () => {
-    await cerrarSesionCompleta();
-    router.replace('/login');
   };
 
   const cambiarTab = (t: Tab) => {
@@ -649,9 +643,7 @@ export default function AdminScreen() {
             {vista === 'perfil' ? 'Mi perfil' : `Hola, ${usuario?.nombre || 'administrador'}`}
           </Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={cerrarSesion} accessibilityLabel="Cerrar sesión">
-          <Ionicons name="log-out-outline" size={22} color={MetricColors.danger} />
-        </TouchableOpacity>
+        <MenuUsuario usuario={usuario} rol="Administrador" />
       </View>
 
       {vista === 'perfil' ? (

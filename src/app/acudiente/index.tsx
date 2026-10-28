@@ -5,6 +5,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react
 
 import BottomNav from '../../components/BottomNav';
 import MapaRuta from '../../components/MapaRuta';
+import MenuUsuario from '../../components/MenuUsuario';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
 import { API_URL, getJson, getStoredAuthData } from '../../services/api';
@@ -132,6 +133,9 @@ export default function AcudienteScreen() {
       <View style={styles.header}>
         <Text style={styles.headerKicker}>centro de control</Text>
         <Text style={styles.headerTitle}>{tab === 'inicio' ? `Hola, ${usuario?.nombre || 'acudiente'}` : 'MI PERFIL'}</Text>
+        <View style={styles.headerMenu}>
+          <MenuUsuario usuario={usuario} rol="Acudiente" />
+        </View>
       </View>
 
       {tab === 'perfil' ? (

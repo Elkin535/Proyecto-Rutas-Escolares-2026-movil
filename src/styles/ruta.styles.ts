@@ -16,6 +16,7 @@ export const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingBottom: 24 },
 
   header: { paddingHorizontal: 16, paddingTop: 50, paddingBottom: 12 },
+  headerMenu: { position: 'absolute', right: 16, top: 48 },
   headerKicker: { color: Colors.primary, fontSize: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   headerTitle: { color: Colors.darkText, fontSize: 22, fontWeight: '800' },

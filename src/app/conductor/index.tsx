@@ -6,6 +6,7 @@ import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, Touchable
 
 import BottomNav from '../../components/BottomNav';
 import MapaRuta from '../../components/MapaRuta';
+import MenuUsuario from '../../components/MenuUsuario';
 import MonitorSomnolencia from '../../components/MonitorSomnolencia';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
@@ -315,6 +316,9 @@ export default function ConductorScreen() {
               · {ESTADO_LABEL[estado]}
             </Text>
           )}
+        </View>
+        <View style={styles.headerMenu}>
+          <MenuUsuario usuario={usuario} rol="Conductor" />
         </View>
       </View>
 
