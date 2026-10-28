@@ -28,6 +28,16 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   }
 };
 
+// Devuelve el fallback si el endpoint falla, para que una lista caída no rompa toda la pantalla
+export const getJson = async (endpoint: string, fallback: any = []) => {
+  try {
+    const res = await fetchApi(endpoint);
+    return res.ok ? await res.json() : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 /**
  * Función para guardar el token y los datos del usuario tras el login
  */
