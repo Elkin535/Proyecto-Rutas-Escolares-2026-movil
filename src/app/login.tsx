@@ -23,37 +23,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // El driver nativo de animaciones no existe en web
 const useNativeDriver = Platform.OS !== 'web';
 
-// Credenciales demo para pruebas rápidas
-const DEMO_USERS: Record<string, { contrasena: string; data: any }> = {
-  'acudiente@colegio.edu.co': {
-    contrasena: '12345678',
-    data: {
-      token: 'jwt-demo-token-acudiente',
-      nombre: 'María Gómez',
-      correo: 'acudiente@colegio.edu.co',
-      nombreRol: 'Acudiente',
-    },
-  },
-  'conductor@colegio.edu.co': {
-    contrasena: '12345678',
-    data: {
-      token: 'jwt-demo-token-conductor',
-      nombre: 'Roberto Rodríguez',
-      correo: 'conductor@colegio.edu.co',
-      nombreRol: 'Conductor',
-    },
-  },
-  'admin@colegio.edu.co': {
-    contrasena: '12345678',
-    data: {
-      token: 'jwt-demo-token-admin',
-      nombre: 'Laura Martínez',
-      correo: 'admin@colegio.edu.co',
-      nombreRol: 'Administrador',
-    },
-  },
-};
-
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -146,15 +115,6 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // 1. Verificación de cuentas demo de desarrollo
-      const demoAccount = DEMO_USERS[trimmedEmail.toLowerCase()];
-      if (demoAccount && demoAccount.contrasena === trimmedPassword) {
-        await saveAuthData(demoAccount.data.token, demoAccount.data, rememberSession);
-        router.replace(getRoleRoute(demoAccount.data.nombreRol));
-        return;
-      }
-
-      // 2. Conexión con el backend en AWS EC2
       const response = await fetchApi('/Usuario/login', {
         method: 'POST',
         body: JSON.stringify({
@@ -195,7 +155,7 @@ export default function LoginScreen() {
       console.error(error);
       showError(
         'Sin conexión',
-        'No se pudo conectar al servidor. Revisa tu internet o utiliza las credenciales demo para pruebas.'
+        'No se pudo conectar al servidor. Revisa tu conexión a internet e inténtalo de nuevo.'
       );
     } finally {
       setLoading(false);
