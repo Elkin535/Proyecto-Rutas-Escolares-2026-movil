@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Backend desplegado en AWS EC2 (IP pública). Para probar contra tu PC usa http://<IP-de-tu-PC>:5110/api
-export const API_URL = 'http://18.220.127.242:5000/api';
+// Backend desplegado en Render (HTTPS). Para probar contra tu PC usa http://<IP-de-tu-PC>:5110/api
+export const API_URL = 'https://schooltrack-api-noyk.onrender.com/api';
 
 /**
  * Almacén en memoria como respaldo transparente.
