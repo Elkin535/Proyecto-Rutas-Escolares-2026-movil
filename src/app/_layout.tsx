@@ -1,6 +1,9 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+// Registra la tarea de GPS en segundo plano al arrancar la app (Android la relanza sin abrir pantallas)
+import '../services/gpsTask';
+
 export default function RootLayout() {
   return (
     <>

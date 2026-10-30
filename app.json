@@ -8,16 +8,22 @@
     "scheme": "schooltrack",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.schooltrack.rutas",
+      "infoPlist": {
+        "UIBackgroundModes": ["location", "audio"]
+      }
     },
     "android": {
+      "package": "com.schooltrack.rutas",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["CAMERA", "VIBRATE"]
     },
     "web": {
       "output": "static",
@@ -25,12 +31,44 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SchoolTrack usa tu ubicación para mostrar el bus en tiempo real a los acudientes.",
+          "locationAlwaysAndWhenInUsePermission": "SchoolTrack sigue compartiendo la ubicación del bus aunque bloquees el celular durante el recorrido.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#00d4ff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "SchoolTrack usa la cámara para tomar la asistencia por reconocimiento facial y detectar somnolencia del conductor.",
+          "photosPermission": "SchoolTrack usa tus fotos para registrar el rostro de los estudiantes."
+        }
+      ],
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      "expo-audio",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],
