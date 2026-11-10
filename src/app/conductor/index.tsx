@@ -19,6 +19,8 @@ import {
   avisar,
   confirmar,
   estadoDeViaje,
+  formatFechaHistorial,
+  formatHoraHistorial,
   ordenarPorParada,
   pillAsistencia,
   placaDeRuta,
@@ -29,6 +31,7 @@ import { RutaColors, styles } from '../../styles/ruta.styles';
 
 const TABS = [
   { key: 'ruta', label: 'Ruta', icon: 'home-outline' as const },
+  { key: 'historial', label: 'Historial', icon: 'time-outline' as const },
   { key: 'perfil', label: 'Perfil', icon: 'person-circle-outline' as const },
 ];
 
@@ -40,12 +43,14 @@ export default function ConductorScreen() {
 
   const [usuario, setUsuario] = useState<any>(null);
   const [conductor, setConductor] = useState<any>(null);
+  const [vehiculo, setVehiculo] = useState<any>(null);
   const [placa, setPlaca] = useState('');
   const [ruta, setRuta] = useState<any>(null);
   const [paradas, setParadas] = useState<any[]>([]);
   const [estudiantes, setEstudiantes] = useState<any[]>([]);
   const [viaje, setViaje] = useState<any>(null);
   const [asistencias, setAsistencias] = useState<any[]>([]);
+  const [historialViajes, setHistorialViajes] = useState<any[]>([]);
   const [gps, setGps] = useState<{ latitude: number; longitude: number } | null>(null);
   const [simulando, setSimulando] = useState(false);
   const [modoGps, setModoGps] = useState<ModoGps | null>(null);
@@ -74,6 +79,7 @@ export default function ConductorScreen() {
     if (!idViajeActivo || simulando) {
       // En simulación se apaga el GPS real para que no compita con las posiciones simuladas
       detenerGps().catch(() => {});
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModoGps(null);
       return;
     }
@@ -157,7 +163,8 @@ export default function ConductorScreen() {
     ]);
 
     const con = conductores.find((c: any) => c.idUsuario === u?.idUsuario) || null;
-    const pla = vehiculos.find((v: any) => v.idVehiculo === con?.idVehiculo)?.placa || '';
+    const veh = vehiculos.find((v: any) => v.idVehiculo === con?.idVehiculo) || null;
+    const pla = veh?.placa || '';
     const nombre = `${u?.nombre || ''} ${u?.apellido || ''}`.trim();
     // La ruta no tiene FK al conductor: se busca por nombre en la descripción y, si no, por placa
     const rut =
@@ -175,16 +182,29 @@ export default function ConductorScreen() {
     const via = con ? viajeDeHoy(historial, h => h.idConductor === con.idConductor) : null;
     const asi = via ? await getJson(`/AsistenciaViaje/obtener-viaje?idViaje=${via.idViaje}`) : [];
 
+    const misViajes = Array.isArray(historial)
+      ? historial
+          .filter(
+            (h: any) =>
+              (con?.idConductor && (h.idConductor === con.idConductor || h.id_conductor === con.idConductor)) ||
+              (con?.idVehiculo && (h.idVehiculo === con.idVehiculo || h.id_vehiculo === con.idVehiculo))
+          )
+          .sort((a: any, b: any) => (b.idViaje || b.id_viaje || 0) - (a.idViaje || a.id_viaje || 0))
+      : [];
+
     setConductor(con);
+    setVehiculo(veh);
     setPlaca(pla);
     setRuta(rut);
     setParadas(par);
     setEstudiantes(est);
     setViaje(via);
     setAsistencias(asi);
+    setHistorialViajes(misViajes);
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarTodo().finally(() => setCargando(false));
   }, [cargarTodo]);
 
@@ -310,7 +330,9 @@ export default function ConductorScreen() {
       <View style={styles.header}>
         <Text style={styles.headerKicker}>centro de control</Text>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>{tab === 'ruta' ? 'MI RUTA' : 'MI PERFIL'}</Text>
+          <Text style={styles.headerTitle}>
+            {tab === 'ruta' ? 'MI RUTA' : tab === 'historial' ? 'HISTORIAL' : 'MI PERFIL'}
+          </Text>
           {tab === 'ruta' && (
             <Text style={[styles.headerEstado, estado === 'finalizado' && { color: RutaColors.success }]}>
               · {ESTADO_LABEL[estado]}
@@ -326,25 +348,154 @@ export default function ConductorScreen() {
         <PerfilView
           usuario={usuario}
           extras={[
-            { icon: 'bus-outline', label: 'Vehículo', value: placa || 'Sin asignar' },
+            {
+              icon: 'bus-outline',
+              label: 'Vehículo',
+              value: vehiculo
+                ? `${vehiculo.placa || ''} · ${vehiculo.modelo || 'Sin modelo'} (${vehiculo.capacidadPasajeros ?? vehiculo.capacidad ?? '-'} pas.)`
+                : placa || 'Sin asignar',
+            },
             { icon: 'map-outline', label: 'Ruta', value: ruta?.nombreRuta || 'Sin asignar' },
             { icon: 'card-outline', label: 'Licencia', value: conductor ? `${conductor.numeroLicencia} (${conductor.categoriaLicencia || '-'})` : '-' },
           ]}
         />
+      ) : tab === 'historial' ? (
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={Colors.primary} />}
+        >
+          {/* Vista previa de la ruta trazada en un mapa base usando react-native-maps */}
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>VISTA PREVIA DE LA RUTA</Text>
+            <Text style={styles.progressText}>{paradas.length} paradas</Text>
+          </View>
+          <MapaRuta paradas={paradas} height={210} onRuta={setInfoRuta}>
+            <View style={styles.mapOverlayTop}>
+              <View style={[styles.chip, { marginBottom: 0 }]}>
+                <Ionicons name="map-outline" size={14} color={Colors.primary} />
+                <Text style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}>
+                  {ruta?.nombreRuta || 'Ruta asignada'}
+                </Text>
+              </View>
+            </View>
+            {infoRuta && (
+              <View style={styles.mapOverlayBottom}>
+                <View style={[styles.chip, { marginBottom: 0 }]}>
+                  <Ionicons name="time-outline" size={14} color={Colors.darkText} />
+                  <Text style={{ color: Colors.darkText, fontSize: 13, fontWeight: '600' }}>
+                    {infoRuta.duracionMin} min · {infoRuta.distanciaKm} km
+                  </Text>
+                </View>
+              </View>
+            )}
+          </MapaRuta>
+
+          {/* Historial (id_viaje, hora_inicio, hora_fin, estado_viaje) */}
+          <View style={[styles.sectionRow, { marginTop: 6, marginBottom: 12 }]}>
+            <Text style={styles.sectionTitle}>HISTORIAL DE VIAJES</Text>
+            <Text style={styles.progressText}>
+              {historialViajes.length} {historialViajes.length === 1 ? 'viaje' : 'viajes'}
+            </Text>
+          </View>
+
+          {historialViajes.length === 0 ? (
+            <View style={styles.empty}>
+              <Ionicons name="time-outline" size={40} color={Colors.placeholder} />
+              <Text style={styles.emptyText}>No hay viajes registrados en el historial aún.</Text>
+            </View>
+          ) : (
+            historialViajes.map((h: any, idx: number) => {
+              const idViaje = h.idViaje ?? h.id_viaje ?? idx + 1;
+              const horaInicio = h.horaInicio ?? h.hora_inicio;
+              const horaFin = h.horaFin ?? h.hora_fin;
+              const estadoViaje = h.estadoViaje ?? h.estado_viaje ?? 'Finalizado';
+              const enProgreso = estadoViaje === 'En progreso';
+              const colorBadge = enProgreso ? Colors.primary : RutaColors.success;
+
+              return (
+                <View key={`hist-${idViaje}-${idx}`} style={styles.historyCard}>
+                  <View style={styles.historyHeader}>
+                    <View style={styles.historyIdBadge}>
+                      <Ionicons name="bus-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.historyIdText}>Viaje #{idViaje}</Text>
+                    </View>
+                    <View style={[styles.historyStatusBadge, { backgroundColor: `${colorBadge}22` }]}>
+                      <Text style={[styles.historyStatusText, { color: colorBadge }]}>{estadoViaje}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.historyTimeContainer}>
+                    <View style={styles.historyTimeCol}>
+                      <Text style={styles.historyTimeLabel}>Hora Inicio</Text>
+                      <Text style={styles.historyTimeValue}>{formatHoraHistorial(horaInicio)}</Text>
+                    </View>
+                    <View style={styles.historyArrow}>
+                      <Ionicons name="arrow-forward" size={16} color={Colors.mutedText} />
+                    </View>
+                    <View style={styles.historyTimeCol}>
+                      <Text style={styles.historyTimeLabel}>Hora Fin</Text>
+                      <Text style={[styles.historyTimeValue, enProgreso && { color: Colors.primary }]}>
+                        {enProgreso ? 'En curso…' : formatHoraHistorial(horaFin)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.historyDateRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="calendar-outline" size={14} color={Colors.mutedText} />
+                      <Text style={styles.mutedText}>{formatFechaHistorial(h.fecha)}</Text>
+                    </View>
+                    <Text style={styles.mutedText}>
+                      Vehículo: {vehiculo?.placa || placa || (h.idVehiculo ? `#${h.idVehiculo}` : '-')}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={Colors.primary} />}
         >
-          <View style={[styles.card, styles.row]}>
-            <View style={styles.avatar}>
-              <Ionicons name="person-outline" size={24} color={Colors.primary} />
+          {/* Tarjeta del Conductor y Vehículo asignado (placa, modelo, capacidad) y ruta asignada */}
+          <View style={styles.card}>
+            <View style={[styles.row, { marginBottom: 12 }]}>
+              <View style={styles.avatar}>
+                <Ionicons name="person-outline" size={24} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Ionicons name="map-outline" size={14} color={Colors.primary} />
+                  <Text style={styles.accentText}>{ruta?.nombreRuta || 'Sin ruta asignada'}</Text>
+                </View>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
-              <Text style={styles.accentText}>{ruta?.nombreRuta || 'Sin ruta asignada'}</Text>
+
+            <View style={styles.vehicleInfoBox}>
+              <View style={styles.vehicleItem}>
+                <Text style={styles.vehicleLabel}>PLACA</Text>
+                <Text style={styles.vehicleValue}>{vehiculo?.placa || placa || '-'}</Text>
+              </View>
+              <View style={styles.vehicleDivider} />
+              <View style={styles.vehicleItem}>
+                <Text style={styles.vehicleLabel}>MODELO</Text>
+                <Text style={styles.vehicleValue}>{vehiculo?.modelo || 'No registrado'}</Text>
+              </View>
+              <View style={styles.vehicleDivider} />
+              <View style={styles.vehicleItem}>
+                <Text style={styles.vehicleLabel}>CAPACIDAD</Text>
+                <Text style={styles.vehicleValue}>
+                  {vehiculo?.capacidadPasajeros != null
+                    ? `${vehiculo.capacidadPasajeros} pas.`
+                    : vehiculo?.capacidad != null
+                    ? `${vehiculo.capacidad} pas.`
+                    : '-'}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.mutedText}>Placa: {placa || '-'}</Text>
           </View>
 
           {!ruta ? (
