@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { Colors } from '../constants/Colors';
 
 export const styles = StyleSheet.create({
@@ -56,12 +56,21 @@ export const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: 12,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
     marginBottom: 16,
     paddingHorizontal: 12,
+  },
+  inputWrapperFocused: {
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 3,
   },
   fieldIcon: {
     fontSize: 16,
@@ -72,6 +81,13 @@ export const styles = StyleSheet.create({
     height: 48,
     fontSize: 14,
     color: Colors.darkText,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'web'
+      ? ({
+          outlineStyle: 'none',
+          outlineWidth: 0,
+        } as any)
+      : {}),
   },
   eyeButton: {
     padding: 6,

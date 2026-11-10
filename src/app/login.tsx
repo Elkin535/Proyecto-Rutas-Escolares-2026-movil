@@ -31,6 +31,7 @@ export default function LoginScreen() {
   const [rememberSession, setRememberSession] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
   const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<{ title: string; message: string; field: ErrorField } | null>(null);
   const errorAnim = useRef(new Animated.Value(0)).current;
@@ -211,29 +212,48 @@ export default function LoginScreen() {
           )}
 
           <Text style={styles.inputLabel}>Correo Institucional</Text>
-          <View style={[styles.inputWrapper, emailHasError && styles.inputWrapperError]}>
-            <Text style={styles.fieldIcon}></Text>
+          <View
+            style={[
+              styles.inputWrapper,
+              emailHasError && styles.inputWrapperError,
+              focusedField === 'email' && styles.inputWrapperFocused,
+            ]}
+          >
             <TextInput
               style={styles.input}
               placeholder="usuario@colegio.edu.co"
               placeholderTextColor={Colors.placeholder}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
               value={email}
               onChangeText={onChangeEmail}
+              onFocus={() => setFocusedField('email')}
+              onBlur={() => setFocusedField(null)}
             />
           </View>
 
           <Text style={styles.inputLabel}>Contraseña</Text>
-          <View style={[styles.inputWrapper, passwordHasError && styles.inputWrapperError]}>
-            <Text style={styles.fieldIcon}></Text>
+          <View
+            style={[
+              styles.inputWrapper,
+              passwordHasError && styles.inputWrapperError,
+              focusedField === 'password' && styles.inputWrapperFocused,
+            ]}
+          >
             <TextInput
               style={styles.input}
               placeholder="••••••••"
               placeholderTextColor={Colors.placeholder}
               secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="current-password"
               value={password}
               onChangeText={onChangePassword}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
             />
 
             <TouchableOpacity
