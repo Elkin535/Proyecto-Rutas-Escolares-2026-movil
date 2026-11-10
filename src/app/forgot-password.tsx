@@ -3,10 +3,8 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -14,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { alerta } from '../components/Dialogo';
 import { Colors } from '../constants/Colors';
 import { styles } from '../styles/forgot-password.styles';
 
@@ -82,13 +81,13 @@ export default function ForgotPasswordScreen() {
   const handleSendCode = () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      Alert.alert('Correo requerido', 'Por favor ingresa tu correo electrónico.');
+      alerta('Correo requerido', 'Por favor ingresa tu correo electrónico.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      Alert.alert('Correo inválido', 'Por favor ingresa una dirección de correo válida.');
+      alerta('Correo inválido', 'Por favor ingresa una dirección de correo válida.');
       return;
     }
 
@@ -102,7 +101,7 @@ export default function ForgotPasswordScreen() {
       setStep('code');
       startTimer();
 
-      Alert.alert(
+      alerta(
         'Código Enviado',
         `Se ha enviado un código de 8 dígitos al correo ${trimmedEmail}.\n\n(Código de prueba: ${newCode})`,
         [{ text: 'Entendido' }]
@@ -122,7 +121,7 @@ export default function ForgotPasswordScreen() {
       setLoading(false);
       startTimer();
 
-      Alert.alert(
+      alerta(
         'Nuevo Código Enviado',
         `Te hemos enviado un nuevo código de 8 dígitos a ${email}.\n\n(Código de prueba: ${newCode})`,
         [{ text: 'Entendido' }]
@@ -135,12 +134,12 @@ export default function ForgotPasswordScreen() {
     const trimmedCode = code.trim();
 
     if (!trimmedCode) {
-      Alert.alert('Código requerido', 'Por favor introduce el código de 8 dígitos.');
+      alerta('Código requerido', 'Por favor introduce el código de 8 dígitos.');
       return;
     }
 
     if (trimmedCode.length !== 8) {
-      Alert.alert('Código incompleto', 'El código de recuperación debe tener 8 dígitos.');
+      alerta('Código incompleto', 'El código de recuperación debe tener 8 dígitos.');
       return;
     }
 
@@ -149,14 +148,14 @@ export default function ForgotPasswordScreen() {
     setTimeout(() => {
       setLoading(false);
       if (trimmedCode === generatedCode) {
-        Alert.alert('Código confirmado', '¡El código es correcto! Ahora crea tu nueva contraseña.', [
+        alerta('Código confirmado', '¡El código es correcto! Ahora crea tu nueva contraseña.', [
           {
             text: 'Continuar',
             onPress: () => setStep('newPassword'),
           },
         ]);
       } else {
-        Alert.alert(
+        alerta(
           'Código Incorrecto',
           'El código de 8 dígitos ingresado no coincide. Revisa el código o solicita uno nuevo.'
         );
@@ -167,17 +166,17 @@ export default function ForgotPasswordScreen() {
   // PASO 3: Guardar la nueva contraseña
   const handleResetPassword = () => {
     if (!newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert('Campos requeridos', 'Por favor completa ambos campos de contraseña.');
+      alerta('Campos requeridos', 'Por favor completa ambos campos de contraseña.');
       return;
     }
 
     if (newPassword.length < 8) {
-      Alert.alert('Contraseña corta', 'La contraseña debe tener al menos 8 caracteres.');
+      alerta('Contraseña corta', 'La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Las contraseñas no coinciden', 'Por favor verifica que ambas contraseñas sean idénticas.');
+      alerta('Las contraseñas no coinciden', 'Por favor verifica que ambas contraseñas sean idénticas.');
       return;
     }
 
@@ -197,10 +196,8 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    // Android es edge-to-edge: sin behavior el formulario queda tapado por el teclado
+    <KeyboardAvoidingView style={styles.container} behavior="padding">
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"

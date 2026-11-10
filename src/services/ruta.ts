@@ -1,5 +1,4 @@
-import { Alert, Platform } from 'react-native';
-
+import { TipoDialogo, alerta } from '../components/Dialogo';
 import { Colors } from '../constants/Colors';
 import { RutaColors } from '../styles/ruta.styles';
 
@@ -104,17 +103,21 @@ export const pillAsistencia = (a?: any): { text: string; color: string } => {
   }
 };
 
-export const avisar = (mensaje: string) =>
-  Platform.OS === 'web' ? window.alert(mensaje) : Alert.alert('Aviso', mensaje);
+// Diálogo con el diseño de la app (funciona igual en Android, iOS y web)
+export const avisar = (mensaje: string, titulo = 'Aviso', tipo?: TipoDialogo) => alerta(titulo, mensaje, undefined, tipo);
 
-// Alert con botones no funciona en react-native-web, ahí usamos window.confirm
-export const confirmar = (mensaje: string, textoOk: string, onOk: () => void) => {
-  if (Platform.OS === 'web') {
-    if (window.confirm(mensaje)) onOk();
-    return;
-  }
-  Alert.alert('Confirmar', mensaje, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: textoOk, onPress: onOk },
-  ]);
-};
+export const confirmar = (
+  mensaje: string,
+  textoOk: string,
+  onOk: () => void,
+  opciones: { titulo?: string; peligro?: boolean } = {}
+) =>
+  alerta(
+    opciones.titulo ?? 'Confirmar',
+    mensaje,
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: textoOk, style: opciones.peligro ? 'destructive' : 'default', onPress: onOk },
+    ],
+    opciones.peligro ? 'advertencia' : 'pregunta'
+  );

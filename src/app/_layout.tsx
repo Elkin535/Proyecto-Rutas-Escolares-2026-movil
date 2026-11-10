@@ -3,6 +3,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+import { DialogoHost } from '../components/Dialogo';
+
 // Registra la tarea de GPS en segundo plano al arrancar la app (Android la relanza sin abrir pantallas)
 import '../services/gpsTask';
 
@@ -84,6 +86,8 @@ export default function RootLayout() {
         <Stack.Screen name="login" />
         <Stack.Screen name="forgot-password" />
       </Stack>
+      {/* Avisos y confirmaciones con el diseño de la app (en lugar del Alert blanco del sistema) */}
+      <DialogoHost />
     </>
   );
 }

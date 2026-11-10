@@ -33,6 +33,7 @@ Plataforma móvil integral desarrollada con **React native**, **Expo Go**, **ASP
 - 🧠 Backend
 - 📱 Frontend
 - 🗄️ Base de Datos
+- 🛠️ Ejecutar en local
 - 📋 Scrum
 - 👥 Equipo
 - 📄 Licencia
@@ -199,8 +200,53 @@ DbSet<Historial>
 
 ---
 
+# 🛠️ Ejecutar en local
 
+## Requisitos
 
+- [Node.js](https://nodejs.org/) **24 LTS** (mínimo 22.13).
+- Un celular con **[Expo Go](https://expo.dev/go)** (compatible con Expo SDK 58), conectado a la **misma red Wi-Fi** que el PC.
+- No necesitas levantar el backend: por defecto la app usa la API desplegada en Render.
+
+## Pasos
+
+```bash
+npm install
+npx expo start
+```
+
+Escanea el código QR con **Expo Go** (Android) o con la cámara (iPhone).
+
+## Usar tu API local (opcional)
+
+1. Levanta el backend del repositorio `Proyecto-Rutas-Escolares-2026` (ver su README).
+2. Busca la IP de tu PC con `ipconfig` (Windows), en "Dirección IPv4".
+3. Crea el archivo `.env.local` en la raíz de este proyecto (no se sube a git):
+
+   ```
+   EXPO_PUBLIC_API_URL=http://<IP-de-tu-PC>:5110/api
+   ```
+
+4. Reinicia Expo limpiando la caché: `npx expo start -c`.
+
+Para volver a Render, borra `.env.local` y reinicia Expo.
+
+## Qué no funciona en Expo Go
+
+Expo Go no incluye estos módulos nativos; la app no se rompe, pero estas funciones quedan desactivadas:
+
+| Función | Motivo |
+|---|---|
+| Monitor de somnolencia del conductor | Usa VisionCamera + ML Kit (nativo) |
+| Notificaciones push | No disponibles en Expo Go para Android desde SDK 53 |
+| GPS con el celular bloqueado (Android) | La ubicación en segundo plano requiere la app instalada |
+
+Para probarlas, genera la app instalable con [EAS](https://docs.expo.dev/build/introduction/):
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest build --profile preview --platform android   # APK que se instala y funciona solo
+```
 
 ---
 

@@ -86,7 +86,8 @@
             "minSdkVersion": 26
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

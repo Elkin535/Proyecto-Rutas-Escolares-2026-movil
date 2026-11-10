@@ -22,6 +22,8 @@ type ErrorField = 'email' | 'password' | 'both' | null;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // El driver nativo de animaciones no existe en web
 const useNativeDriver = Platform.OS !== 'web';
+// Solo aplica en Android; en iOS se mantiene el autocompletado de contraseñas del llavero
+const NO_AUTOFILL = Platform.OS === 'android' ? 'no' : 'auto';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -164,10 +166,9 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    // En Android la app es edge-to-edge: la ventana ya no se encoge con el teclado,
+    // así que el behavior hace falta en ambas plataformas (guía de teclado de Expo)
+    <KeyboardAvoidingView style={styles.container} behavior="padding">
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -227,6 +228,9 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="email"
+              // El aviso de autocompletado de Google ("Use la contraseña de esta cuenta") le quita
+              // el foco al campo y cierra el teclado apenas se abre; por eso se desactiva en Android
+              importantForAutofill={NO_AUTOFILL}
               value={email}
               onChangeText={onChangeEmail}
               onFocus={() => setFocusedField('email')}
@@ -250,6 +254,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="current-password"
+              importantForAutofill={NO_AUTOFILL}
               value={password}
               onChangeText={onChangePassword}
               onFocus={() => setFocusedField('password')}

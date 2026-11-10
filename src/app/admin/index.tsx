@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   RefreshControl,
   ScrollView,
@@ -24,7 +23,8 @@ import { Colors } from '../../constants/Colors';
 import { API_URL, fetchApi, getJson, getStoredAuthData } from '../../services/api';
 import { registrarPush } from '../../services/push';
 import { registrarRostro, tomarFotoBase64 } from '../../services/rostros';
-import { placaDeRuta } from '../../services/ruta';
+import { avisar, confirmar as confirmarRuta, placaDeRuta } from '../../services/ruta';
+import { alerta } from '../../components/Dialogo';
 import { MetricColors, styles } from '../../styles/admin.styles';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -60,20 +60,9 @@ type Item = {
   extra?: { icon: IconName; label: string; onPress: () => void };
 };
 
-// Alert con botones no funciona en react-native-web, ahí usamos window.confirm
-const confirmar = (mensaje: string, onOk: () => void) => {
-  if (Platform.OS === 'web') {
-    if (window.confirm(mensaje)) onOk();
-    return;
-  }
-  Alert.alert('Confirmar', mensaje, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Eliminar', style: 'destructive', onPress: onOk },
-  ]);
-};
-
-const avisar = (mensaje: string) =>
-  Platform.OS === 'web' ? window.alert(mensaje) : Alert.alert('Aviso', mensaje);
+// Diálogos con el diseño de la app (también en web)
+const confirmar = (mensaje: string, onOk: () => void) =>
+  confirmarRuta(mensaje, 'Eliminar', onOk, { titulo: 'Confirmar eliminación', peligro: true });
 
 const formatearFecha = (fecha?: string) => (fecha ? new Date(fecha).toLocaleDateString() : '-');
 
@@ -180,23 +169,31 @@ export default function AdminScreen() {
         if (!foto) return;
         await registrarRostro(e.idEstudiante, foto);
         await cargarTodo();
-        avisar(`Rostro de ${e.nombre} registrado. Ya puede tomarse su asistencia con la cámara.`);
+        avisar(
+          `El rostro de ${e.nombre} ${e.apellido || ''} quedó registrado. El conductor ya puede tomar su asistencia con la cámara.`.replace('  ', ' '),
+          'Rostro registrado',
+          'exito'
+        );
       } catch (err: any) {
-        avisar(err?.message || 'No se pudo registrar el rostro.');
+        avisar(err?.message || 'No se pudo registrar el rostro.', 'No se pudo registrar', 'error');
       }
     };
     const aviso =
       'Al continuar confirmas que el acudiente autorizó el tratamiento de los datos biométricos del estudiante (Ley 1581 de 2012). ' +
       'Toma la foto de frente, sin gafas oscuras y con buena luz.';
-    if (Platform.OS === 'web') {
-      if (window.confirm(aviso)) tomar('galeria');
-      return;
-    }
-    Alert.alert(`Registrar rostro de ${e.nombre}`, aviso, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Galería', onPress: () => tomar('galeria') },
-      { text: 'Tomar foto', onPress: () => tomar('camara') },
-    ]);
+    // En web no hay cámara del celular: se elige la foto desde los archivos
+    const botones =
+      Platform.OS === 'web'
+        ? [
+            { text: 'Cancelar', style: 'cancel' as const },
+            { text: 'Elegir foto', onPress: () => tomar('galeria') },
+          ]
+        : [
+            { text: 'Cancelar', style: 'cancel' as const },
+            { text: 'Galería', onPress: () => tomar('galeria') },
+            { text: 'Tomar foto', onPress: () => tomar('camara') },
+          ];
+    alerta(`Registrar rostro de ${e.nombre}`, aviso, botones, 'rostro');
   };
 
   const onRefresh = async () => {

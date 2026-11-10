@@ -1,14 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Text, TouchableOpacity, Vibration, View } from 'react-native';
-import { useCameraPermission } from 'react-native-vision-camera';
-import { Camera, Face } from 'react-native-vision-camera-face-detector';
+import { Linking, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import type { Face } from 'react-native-vision-camera-face-detector';
 
 import { Colors } from '../constants/Colors';
 import { fetchApi } from '../services/api';
 import { notificarLocal } from '../services/push';
+import { avisar, confirmar } from '../services/ruta';
 import { RutaColors, styles } from '../styles/ruta.styles';
+
+// Carga segura: En Expo Go no están los módulos nativos C++ (NitroModules/VisionCamera)
+let Camera: any = null;
+let useCameraPermission: () => { hasPermission: boolean; requestPermission: () => Promise<boolean> } = () => ({
+  hasPermission: false,
+  requestPermission: async () => false,
+});
+
+try {
+  const vc = require('react-native-vision-camera');
+  if (vc?.useCameraPermission) {
+    useCameraPermission = vc.useCameraPermission;
+  }
+  const fd = require('react-native-vision-camera-face-detector');
+  Camera = fd?.Camera;
+} catch {
+  // Expo Go: degrada de forma segura sin romper la aplicación
+}
+
+// La detección de ojos (ML Kit) es nativa: solo existe en la app instalada (build de desarrollo / APK)
+const CAMARA_DISPONIBLE = !!Camera;
 
 // Umbrales (ML Kit da la probabilidad de ojo abierto entre 0 y 1)
 const OJO_CERRADO = 0.25;
@@ -18,7 +39,7 @@ const PERCLOS_FATIGA = 0.3;
 const SIN_ROSTRO_MS = 8000;
 const PAUSA_ALERTA_MS = { Microsueño: 60000, Fatiga: 300000 };
 
-type Estado = 'atento' | 'fatiga' | 'microsueno' | 'sin-rostro' | 'sin-permiso';
+type Estado = 'atento' | 'fatiga' | 'microsueno' | 'sin-rostro' | 'sin-permiso' | 'no-disponible';
 type Tipo = keyof typeof PAUSA_ALERTA_MS;
 
 interface Props {
@@ -32,7 +53,8 @@ const ESTADOS: Record<Estado, { texto: string; color: string; icono: keyof typeo
   fatiga: { texto: 'Fatiga', color: '#f59e0b', icono: 'cafe-outline' },
   microsueno: { texto: '¡DESPIERTA!', color: RutaColors.danger, icono: 'alert-circle' },
   'sin-rostro': { texto: 'Sin rostro', color: Colors.mutedText, icono: 'eye-off-outline' },
-  'sin-permiso': { texto: 'Sin cámara', color: Colors.mutedText, icono: 'videocam-off-outline' },
+  'sin-permiso': { texto: 'Sin permiso de cámara', color: '#f59e0b', icono: 'videocam-off-outline' },
+  'no-disponible': { texto: 'Monitor de sueño inactivo', color: Colors.mutedText, icono: 'eye-off-outline' },
 };
 
 /**
@@ -58,7 +80,7 @@ export default function MonitorSomnolencia({ activo, idViaje, ubicacion }: Props
   }, [ubicacion]);
 
   useEffect(() => {
-    if (activo && !hasPermission) requestPermission();
+    if (activo && CAMARA_DISPONIBLE && !hasPermission) requestPermission();
   }, [activo, hasPermission, requestPermission]);
 
   useEffect(() => {
@@ -165,11 +187,49 @@ export default function MonitorSomnolencia({ activo, idViaje, ubicacion }: Props
   );
 
   if (!activo) return null;
-  const info = ESTADOS[hasPermission ? estado : 'sin-permiso'];
+
+  // Sin el módulo nativo (Expo Go) o sin permiso: etiqueta pequeña que explica qué pasa al tocarla,
+  // en lugar de una caja negra que tapa los botones de la pantalla
+  if (!CAMARA_DISPONIBLE || !hasPermission) {
+    const motivo: Estado = !CAMARA_DISPONIBLE ? 'no-disponible' : 'sin-permiso';
+    const info = ESTADOS[motivo];
+    const explicar = () =>
+      motivo === 'no-disponible'
+        ? avisar(
+            'La detección de somnolencia analiza los ojos con la cámara frontal usando un módulo nativo que Expo Go no incluye. ' +
+              'Funciona en la app instalada (build de desarrollo o APK). El resto del recorrido funciona normal.',
+            'No disponible en Expo Go',
+            'info'
+          )
+        : confirmar(
+            'Para vigilar si el conductor se duerme, SchoolTrack necesita usar la cámara frontal durante el recorrido.',
+            'Permitir',
+            () => {
+              requestPermission().then(ok => {
+                if (!ok) Linking.openSettings();
+              });
+            },
+            { titulo: 'Permiso de cámara' }
+          );
+    return (
+      <TouchableOpacity
+        style={[styles.monitorPill, { borderColor: `${info.color}66` }]}
+        onPress={explicar}
+        accessibilityRole="button"
+        accessibilityLabel={info.texto}
+      >
+        <Ionicons name={info.icono} size={14} color={info.color} />
+        <Text style={[styles.monitorTexto, { color: info.color }]}>{info.texto}</Text>
+        <Ionicons name="information-circle-outline" size={14} color={Colors.mutedText} />
+      </TouchableOpacity>
+    );
+  }
+
+  const info = ESTADOS[estado];
 
   return (
     <View style={[styles.monitor, { borderColor: info.color }]}>
-      {hasPermission && (
+      {(
         <Camera
           style={styles.monitorCamara}
           device="front"
@@ -178,7 +238,7 @@ export default function MonitorSomnolencia({ activo, idViaje, ubicacion }: Props
           runClassifications
           minFaceSize={0.2}
           onFacesDetected={onFaces}
-          onError={e => console.warn('Cámara de somnolencia:', e)}
+          onError={(e: unknown) => console.warn('Cámara de somnolencia:', e)}
         />
       )}
       <View style={[styles.monitorEstado, { backgroundColor: `${info.color}33` }]}>

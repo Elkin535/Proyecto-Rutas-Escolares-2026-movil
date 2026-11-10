@@ -63,14 +63,11 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 12,
   },
+  // Solo cambia color: cambiar sombra/elevation al enfocar hace que Android
+  // vuelva a dibujar el contenedor del campo mientras abre el teclado
   inputWrapperFocused: {
     borderColor: Colors.primary,
     backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 3,
   },
   fieldIcon: {
     fontSize: 16,
