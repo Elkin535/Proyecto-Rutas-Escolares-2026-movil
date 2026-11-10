@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { Colors } from '../constants/Colors';
 
 export const styles = StyleSheet.create({
@@ -173,6 +173,13 @@ export const styles = StyleSheet.create({
     height: 48,
     fontSize: 14,
     color: Colors.darkText,
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'web'
+      ? ({
+          outlineStyle: 'none',
+          outlineWidth: 0,
+        } as any)
+      : {}),
   },
   eyeButton: {
     padding: 6,
