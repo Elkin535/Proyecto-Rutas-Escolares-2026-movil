@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Location from 'expo-location';
-import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -41,9 +40,30 @@ const TABS = [
 // Distancia a la que se considera que el bus ya pasó por una parada
 const RADIO_PARADA_KM = 0.1;
 
+let SpeechModule: any = null;
+try {
+  SpeechModule = require('expo-speech');
+} catch {
+  // expo-speech no disponible
+}
+
 const hablar = (texto: string) => {
-  Speech.stop().catch(() => {});
-  Speech.speak(texto, { language: 'es-CO', rate: 0.95 });
+  if (SpeechModule?.speak) {
+    SpeechModule.stop?.().catch(() => { });
+    SpeechModule.speak(texto, { language: 'es-CO', rate: 0.95 });
+    return;
+  }
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(texto);
+      u.lang = 'es-CO';
+      u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    } catch {
+      // Síntesis no soportada en el entorno actual
+    }
+  }
 };
 
 // Abre Google Maps (o el navegador) con indicaciones paso a paso hasta la parada
@@ -108,7 +128,7 @@ export default function ConductorScreen() {
       fetchApi(`/Historial/actualizar-gps?idViaje=${idViajeActivo}`, {
         method: 'PUT',
         body: JSON.stringify({ latitudActual: latitude, longitudActual: longitude }),
-      }).catch(() => {});
+      }).catch(() => { });
     },
     [idViajeActivo]
   );
@@ -118,7 +138,7 @@ export default function ConductorScreen() {
   useEffect(() => {
     if (!idViajeActivo || simulando) {
       // En simulación se apaga el GPS real para que no compita con las posiciones simuladas
-      detenerGps().catch(() => {});
+      detenerGps().catch(() => { });
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setModoGps(null);
       return;
@@ -157,9 +177,9 @@ export default function ConductorScreen() {
   // Pantalla siempre encendida en el recorrido: la necesitan el mapa y el monitor de somnolencia
   useEffect(() => {
     if (!idViajeActivo) return;
-    activateKeepAwakeAsync('recorrido').catch(() => {});
+    activateKeepAwakeAsync('recorrido').catch(() => { });
     return () => {
-      deactivateKeepAwake('recorrido').catch(() => {});
+      deactivateKeepAwake('recorrido').catch(() => { });
     };
   }, [idViajeActivo]);
 
@@ -224,12 +244,12 @@ export default function ConductorScreen() {
 
     const misViajes = Array.isArray(historial)
       ? historial
-          .filter(
-            (h: any) =>
-              (con?.idConductor && (h.idConductor === con.idConductor || h.id_conductor === con.idConductor)) ||
-              (con?.idVehiculo && (h.idVehiculo === con.idVehiculo || h.id_vehiculo === con.idVehiculo))
-          )
-          .sort((a: any, b: any) => (b.idViaje || b.id_viaje || 0) - (a.idViaje || a.id_viaje || 0))
+        .filter(
+          (h: any) =>
+            (con?.idConductor && (h.idConductor === con.idConductor || h.id_conductor === con.idConductor)) ||
+            (con?.idVehiculo && (h.idVehiculo === con.idVehiculo || h.id_vehiculo === con.idVehiculo))
+        )
+        .sort((a: any, b: any) => (b.idViaje || b.id_viaje || 0) - (a.idViaje || a.id_viaje || 0))
       : [];
 
     setConductor(con);
@@ -314,7 +334,7 @@ export default function ConductorScreen() {
           if (!res.ok) throw new Error(await leerMensajeError(res, 'No se pudo finalizar el recorrido.'));
           // La pantalla cambia de inmediato aunque la recarga tarde (p. ej. servidor lento)
           setViaje((v: any) => (v?.idViaje === idViaje ? { ...v, estadoViaje: 'Finalizado' } : v));
-          detenerGps().catch(() => {});
+          detenerGps().catch(() => { });
         }, 'No se pudo finalizar el recorrido.');
         if (ok) avisar('El recorrido quedó guardado en el historial.', 'Recorrido finalizado', 'exito');
       },
@@ -324,9 +344,75 @@ export default function ConductorScreen() {
 
   const marcar = (idAsistencia: number, estadoAbordaje: string) =>
     ejecutar(async () => {
+      // 1. Obtener ubicación GPS actual para persistir las coordenadas del cambio de estado
+      let coords = gps || ubicacionViaje;
+      if (!coords && estado === 'en-curso') {
+        try {
+          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        } catch {
+          const ult = await Location.getLastKnownPositionAsync().catch(() => null);
+          if (ult) coords = { latitude: ult.coords.latitude, longitude: ult.coords.longitude };
+        }
+      }
+
+      // 2. Marca de tiempo actual (TimeSpan "HH:mm:ss" e ISO 8601)
+      const ahora = new Date();
+      const horaString = ahora.toTimeString().split(' ')[0]; // "HH:mm:ss"
+      const isoString = ahora.toISOString();
+
+      // 3. Construir payload con estado, marca de tiempo y ubicación
+      const payload: Record<string, any> = {
+        estadoAbordaje,
+      };
+
+      if (estadoAbordaje !== 'Pendiente') {
+        payload.fechaHora = isoString;
+        payload.marcaTiempo = isoString;
+        payload.horaRegistro = horaString;
+
+        if (coords) {
+          const lat = Number(coords.latitude);
+          const lng = Number(coords.longitude);
+          payload.latitud = lat;
+          payload.longitud = lng;
+          payload.latitudActual = lat;
+          payload.longitudActual = lng;
+        }
+
+        if (estadoAbordaje === 'Abordo') {
+          payload.horaAbordaje = horaString;
+          if (coords) {
+            payload.latitudAbordaje = Number(coords.latitude);
+            payload.longitudAbordaje = Number(coords.longitude);
+          }
+        } else if (estadoAbordaje === 'Entregado') {
+          payload.horaEntrega = horaString;
+          if (coords) {
+            payload.latitudEntrega = Number(coords.latitude);
+            payload.longitudEntrega = Number(coords.longitude);
+          }
+        }
+      } else {
+        // Al deshacer (volver a Pendiente), se reinician horas y coordenadas
+        payload.horaAbordaje = null;
+        payload.horaEntrega = null;
+        payload.latitud = null;
+        payload.longitud = null;
+        payload.latitudAbordaje = null;
+        payload.longitudAbordaje = null;
+        payload.latitudEntrega = null;
+        payload.longitudEntrega = null;
+      }
+
+      // Actualización optimista inmediata en el estado local para que la UI responda sin parpadeos
+      setAsistencias((prev: any[]) =>
+        prev.map(a => (a.idAsistencia === idAsistencia ? { ...a, ...payload } : a))
+      );
+
       const res = await fetchApi(`/AsistenciaViaje/actualizar?id=${idAsistencia}`, {
         method: 'PUT',
-        body: JSON.stringify({ estadoAbordaje }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await leerMensajeError(res, 'No se pudo actualizar la asistencia.'));
     }, 'No se pudo actualizar la asistencia.');
@@ -429,20 +515,20 @@ export default function ConductorScreen() {
 
   const gpsInfo =
     simulando ? { texto: 'Ubicación simulada', color: '#f59e0b', icono: 'flask-outline' as const }
-    : modoGps === 'segundo-plano' ? { texto: 'GPS activo (también bloqueado)', color: RutaColors.success, icono: 'navigate-circle-outline' as const }
-    : modoGps === 'primer-plano' ? { texto: 'GPS solo con la app abierta · Toca', color: '#f59e0b', icono: 'navigate-circle-outline' as const }
-    : modoGps === 'denegado' ? { texto: 'Sin permiso de ubicación · Toca', color: RutaColors.danger, icono: 'warning-outline' as const }
-    : { texto: 'Iniciando GPS…', color: Colors.mutedText, icono: 'navigate-circle-outline' as const };
+      : modoGps === 'segundo-plano' ? { texto: 'GPS activo (también bloqueado)', color: RutaColors.success, icono: 'navigate-circle-outline' as const }
+        : modoGps === 'primer-plano' ? { texto: 'GPS solo con la app abierta · Toca', color: '#f59e0b', icono: 'navigate-circle-outline' as const }
+          : modoGps === 'denegado' ? { texto: 'Sin permiso de ubicación · Toca', color: RutaColors.danger, icono: 'warning-outline' as const }
+            : { texto: 'Iniciando GPS…', color: Colors.mutedText, icono: 'navigate-circle-outline' as const };
 
   const chip =
     estado === 'sin-iniciar' ? { text: 'Listo para salir', color: Colors.mutedText }
-    : estado === 'en-curso' ? { text: 'En movimiento', color: RutaColors.success }
-    : { text: '¡Recorrido finalizado con éxito!', color: RutaColors.success };
+      : estado === 'en-curso' ? { text: 'En movimiento', color: RutaColors.success }
+        : { text: '¡Recorrido finalizado con éxito!', color: RutaColors.success };
 
   const resumen =
     estado === 'sin-iniciar' ? `${total} pendientes`
-    : estado === 'en-curso' ? `${ausentes} ausente(s) · ${pendientes} pendiente(s)`
-    : `${abordados} abordados / ${ausentes} ausentes · Sin pendientes`;
+      : estado === 'en-curso' ? `${ausentes} ausente(s) · ${pendientes} pendiente(s)`
+        : `${abordados} abordados / ${ausentes} ausentes · Sin pendientes`;
 
   return (
     <View style={styles.container}>
@@ -598,44 +684,44 @@ export default function ConductorScreen() {
               </View>
             </View>
           ) : (
-          /* Tarjeta del Conductor y Vehículo asignado (placa, modelo, capacidad) y ruta asignada */
-          <View style={styles.card}>
-            <View style={[styles.row, { marginBottom: 12 }]}>
-              <View style={styles.avatar}>
-                <Ionicons name="person-outline" size={24} color={Colors.primary} />
+            /* Tarjeta del Conductor y Vehículo asignado (placa, modelo, capacidad) y ruta asignada */
+            <View style={styles.card}>
+              <View style={[styles.row, { marginBottom: 12 }]}>
+                <View style={styles.avatar}>
+                  <Ionicons name="person-outline" size={24} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons name="map-outline" size={14} color={Colors.primary} />
+                    <Text style={styles.accentText}>{ruta?.nombreRuta || 'Sin ruta asignada'}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <Ionicons name="map-outline" size={14} color={Colors.primary} />
-                  <Text style={styles.accentText}>{ruta?.nombreRuta || 'Sin ruta asignada'}</Text>
+
+              <View style={styles.vehicleInfoBox}>
+                <View style={styles.vehicleItem}>
+                  <Text style={styles.vehicleLabel}>PLACA</Text>
+                  <Text style={styles.vehicleValue}>{vehiculo?.placa || placa || '-'}</Text>
+                </View>
+                <View style={styles.vehicleDivider} />
+                <View style={styles.vehicleItem}>
+                  <Text style={styles.vehicleLabel}>MODELO</Text>
+                  <Text style={styles.vehicleValue}>{vehiculo?.modelo || 'No registrado'}</Text>
+                </View>
+                <View style={styles.vehicleDivider} />
+                <View style={styles.vehicleItem}>
+                  <Text style={styles.vehicleLabel}>CAPACIDAD</Text>
+                  <Text style={styles.vehicleValue}>
+                    {vehiculo?.capacidadPasajeros != null
+                      ? `${vehiculo.capacidadPasajeros} pas.`
+                      : vehiculo?.capacidad != null
+                        ? `${vehiculo.capacidad} pas.`
+                        : '-'}
+                  </Text>
                 </View>
               </View>
             </View>
-
-            <View style={styles.vehicleInfoBox}>
-              <View style={styles.vehicleItem}>
-                <Text style={styles.vehicleLabel}>PLACA</Text>
-                <Text style={styles.vehicleValue}>{vehiculo?.placa || placa || '-'}</Text>
-              </View>
-              <View style={styles.vehicleDivider} />
-              <View style={styles.vehicleItem}>
-                <Text style={styles.vehicleLabel}>MODELO</Text>
-                <Text style={styles.vehicleValue}>{vehiculo?.modelo || 'No registrado'}</Text>
-              </View>
-              <View style={styles.vehicleDivider} />
-              <View style={styles.vehicleItem}>
-                <Text style={styles.vehicleLabel}>CAPACIDAD</Text>
-                <Text style={styles.vehicleValue}>
-                  {vehiculo?.capacidadPasajeros != null
-                    ? `${vehiculo.capacidadPasajeros} pas.`
-                    : vehiculo?.capacidad != null
-                    ? `${vehiculo.capacidad} pas.`
-                    : '-'}
-                </Text>
-              </View>
-            </View>
-          </View>
           )}
 
           {!ruta ? (
@@ -666,8 +752,8 @@ export default function ConductorScreen() {
                       {estado === 'en-curso' && plan
                         ? `Faltan ${paradasPendientes.length} · ${plan.totalMin} min · ${plan.totalKm} km`
                         : infoRuta
-                        ? `${infoRuta.duracionMin} min · ${infoRuta.distanciaKm} km`
-                        : `${paradas.length} paradas`}
+                          ? `${infoRuta.duracionMin} min · ${infoRuta.distanciaKm} km`
+                          : `${paradas.length} paradas`}
                     </Text>
                   </View>
                 </View>
@@ -714,8 +800,8 @@ export default function ConductorScreen() {
                       {paradasPendientes.length === 0
                         ? 'Pasaste por todas las paradas. Cuando llegues, finaliza el recorrido.'
                         : !posicionBus
-                        ? 'Esperando la señal del GPS para calcular la mejor ruta…'
-                        : 'Calculando la mejor ruta para recoger a los estudiantes…'}
+                          ? 'Esperando la señal del GPS para calcular la mejor ruta…'
+                          : 'Calculando la mejor ruta para recoger a los estudiantes…'}
                     </Text>
                   </View>
                 ))}
@@ -817,6 +903,7 @@ export default function ConductorScreen() {
                 const parada = paradas.find(p => p.idParada === e.idParada);
                 const orden = parada ? paradas.indexOf(parada) + 1 : '-';
                 const borde = esSiguiente ? Colors.primary : pendiente ? RutaColors.cardBorder : pill.color;
+                const tieneGps = a && !pendiente && (a.latitud != null || a.latitudAbordaje != null || a.latitudEntrega != null);
 
                 return (
                   <View key={e.idEstudiante} style={[styles.studentCard, { borderColor: borde }]}>
@@ -833,8 +920,28 @@ export default function ConductorScreen() {
                     </View>
 
                     <View style={styles.sectionRow}>
-                      <View style={[styles.pill, { backgroundColor: `${pill.color}22` }]}>
-                        <Text style={[styles.pillText, { color: pill.color }]}>{pill.text}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <View style={[styles.pill, { backgroundColor: `${pill.color}22` }]}>
+                          <Text style={[styles.pillText, { color: pill.color }]}>{pill.text}</Text>
+                        </View>
+                        {tieneGps && (
+                          <View
+                            style={[
+                              styles.pill,
+                              {
+                                backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                              },
+                            ]}
+                          >
+                            <Ionicons name="location-sharp" size={11} color={Colors.primary} />
+                            <Text style={[styles.pillText, { color: Colors.primary, fontSize: 11 }]}>
+                              GPS registrado
+                            </Text>
+                          </View>
+                        )}
                       </View>
                       {estado === 'en-curso' && a && !pendiente && (
                         <TouchableOpacity onPress={() => marcar(a.idAsistencia, 'Pendiente')} disabled={ocupado}>
