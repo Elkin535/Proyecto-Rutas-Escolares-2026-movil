@@ -18,6 +18,31 @@ export const formatHora = (h?: string | null) => {
   return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'a. m.' : 'p. m.'}`;
 };
 
+// Formato robusto para horas de viajes en historial (admite TimeSpan "06:42:10", "06:42" o fecha ISO)
+export const formatHoraHistorial = (h?: string | null) => {
+  if (!h) return '-';
+  if (h.includes('T')) {
+    const d = new Date(h);
+    if (!isNaN(d.getTime())) {
+      const hh = d.getHours();
+      const mm = d.getMinutes();
+      return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'a. m.' : 'p. m.'}`;
+    }
+  }
+  if (h.includes(':')) {
+    return formatHora(h);
+  }
+  return h;
+};
+
+// Formato legible de fecha para el historial de viajes (ej: "10 nov. 2026")
+export const formatFechaHistorial = (f?: string | null) => {
+  if (!f) return '-';
+  const d = new Date(f);
+  if (isNaN(d.getTime())) return f;
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 // Último viaje de hoy que cumpla el filtro (por conductor o por vehículo); null si no hay
 export const viajeDeHoy = (historial: any[], filtro: (h: any) => boolean) => {
   const hoy = new Date().toDateString();

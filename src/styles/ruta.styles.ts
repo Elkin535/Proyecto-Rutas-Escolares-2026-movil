@@ -247,4 +247,104 @@ export const styles = StyleSheet.create({
   profileName: { color: Colors.darkText, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   divider: { height: 1, backgroundColor: RutaColors.cardBorder },
+
+  // Tarjeta de vehículo en Conductor (placa, modelo, capacidad)
+  vehicleInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.darker,
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginTop: 10,
+  },
+  vehicleItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  vehicleLabel: {
+    color: Colors.mutedText,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  vehicleValue: {
+    color: Colors.darkText,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  vehicleDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: RutaColors.cardBorder,
+  },
+
+  // Tarjetas de Historial de Viajes
+  historyCard: {
+    backgroundColor: RutaColors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: RutaColors.cardBorder,
+    padding: 14,
+    marginBottom: 12,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  historyIdBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  historyIdText: {
+    color: Colors.darkText,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  historyStatusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  historyStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  historyTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.darker,
+    borderRadius: 10,
+    padding: 10,
+  },
+  historyTimeCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  historyTimeLabel: {
+    color: Colors.mutedText,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  historyTimeValue: {
+    color: Colors.darkText,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  historyArrow: {
+    paddingHorizontal: 6,
+  },
+  historyDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
 });
