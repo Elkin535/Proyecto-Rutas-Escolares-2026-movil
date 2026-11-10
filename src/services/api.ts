@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Backend desplegado en Render (HTTPS). Para probar contra tu PC usa http://<IP-de-tu-PC>:5110/api
-export const API_URL = 'https://schooltrack-api-noyk.onrender.com/api';
+// Por defecto (y en el APK) se usa el backend desplegado en Render.
+// Para probar contra tu PC crea un archivo .env.local (no se sube a git) con:
+//   EXPO_PUBLIC_API_URL=http://<IP-de-tu-PC>:5110/api
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://schooltrack-api-noyk.onrender.com/api';
 
 /**
  * Almacén en memoria como respaldo transparente.
@@ -66,6 +68,24 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 // Devuelve el fallback si el endpoint falla, para que una lista caída no rompa toda la pantalla
+// Mensaje legible de una respuesta de error ({ mensaje }, validaciones o cuerpo vacío)
+export const leerMensajeError = async (res: Response, porDefecto: string) => {
+  try {
+    const texto = await res.text();
+    if (!texto) return porDefecto;
+    const data = JSON.parse(texto);
+    if (data?.mensaje) return data.mensaje as string;
+    const errores = data?.errores || data?.errors;
+    if (errores && typeof errores === 'object') {
+      const lista = Object.values(errores).flat().filter(Boolean);
+      if (lista.length) return lista.join(' ');
+    }
+  } catch {
+    // cuerpo no JSON
+  }
+  return porDefecto;
+};
+
 export const getJson = async (endpoint: string, fallback: any = []) => {
   try {
     const res = await fetchApi(endpoint);

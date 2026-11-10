@@ -1,16 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Location from 'expo-location';
+import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 import BottomNav from '../../components/BottomNav';
-import MapaRuta from '../../components/MapaRuta';
+import { alerta } from '../../components/Dialogo';
+import MapaRuta, { PlanRuta } from '../../components/MapaRuta';
 import MenuUsuario from '../../components/MenuUsuario';
 import MonitorSomnolencia from '../../components/MonitorSomnolencia';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
-import { fetchApi, getJson, getStoredAuthData } from '../../services/api';
+import { fetchApi, getJson, getStoredAuthData, leerMensajeError } from '../../services/api';
 import { ModoGps, detenerGps, escucharGps, iniciarGps } from '../../services/gpsTask';
 import { registrarPush } from '../../services/push';
 import { identificarRostro, tomarFotoBase64 } from '../../services/rostros';
@@ -18,6 +20,7 @@ import {
   ESTADO_LABEL,
   avisar,
   confirmar,
+  distanciaKm,
   estadoDeViaje,
   formatFechaHistorial,
   formatHoraHistorial,
@@ -34,6 +37,20 @@ const TABS = [
   { key: 'historial', label: 'Historial', icon: 'time-outline' as const },
   { key: 'perfil', label: 'Perfil', icon: 'person-circle-outline' as const },
 ];
+
+// Distancia a la que se considera que el bus ya pasó por una parada
+const RADIO_PARADA_KM = 0.1;
+
+const hablar = (texto: string) => {
+  Speech.stop().catch(() => {});
+  Speech.speak(texto, { language: 'es-CO', rate: 0.95 });
+};
+
+// Abre Google Maps (o el navegador) con indicaciones paso a paso hasta la parada
+const navegarA = (lat: number, lng: number) =>
+  Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`).catch(() =>
+    avisar('No se pudo abrir Google Maps en este celular.', 'Sin navegador', 'error')
+  );
 
 export default function ConductorScreen() {
   const [tab, setTab] = useState('ruta');
@@ -56,8 +73,31 @@ export default function ConductorScreen() {
   const [modoGps, setModoGps] = useState<ModoGps | null>(null);
   const [ultimaSenal, setUltimaSenal] = useState<Date | null>(null);
   const [infoRuta, setInfoRuta] = useState<{ distanciaKm: string; duracionMin: number } | null>(null);
+  // Paradas por las que el bus ya pasó en este recorrido (por cercanía GPS) y plan óptimo de OSRM
+  const [visitadas, setVisitadas] = useState<number[]>([]);
+  const [plan, setPlan] = useState<PlanRuta | null>(null);
 
   const idViajeActivo = viaje?.estadoViaje === 'En progreso' ? viaje.idViaje : null;
+
+  // Cada recorrido nuevo empieza sin paradas visitadas
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setVisitadas([]);
+    setPlan(null);
+  }, [idViajeActivo]);
+
+  // Marca como visitada toda parada a menos de 100 m del bus
+  useEffect(() => {
+    if (!idViajeActivo || !gps || paradas.length === 0) return;
+    const cercanas = paradas
+      .map((p, i) => ({ i, km: distanciaKm(gps.latitude, gps.longitude, Number(p.latitud), Number(p.longitud)) }))
+      .filter(x => x.km <= RADIO_PARADA_KM)
+      .map(x => x.i);
+    if (cercanas.some(i => !visitadas.includes(i))) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisitadas(prev => [...new Set([...prev, ...cercanas])]);
+    }
+  }, [gps, idViajeActivo, paradas, visitadas]);
 
   // Mueve el bus en el mapa y lo transmite al backend (que lo reenvía por SignalR a los acudientes)
   const enviarUbicacion = useCallback(
@@ -214,26 +254,36 @@ export default function ConductorScreen() {
     setRefrescando(false);
   };
 
-  // Ejecuta la acción contra el API, avisa si falla y recarga
-  const ejecutar = async (accion: () => Promise<void>, error: string) => {
+  // Ejecuta la acción contra el API, muestra el mensaje del servidor si falla y siempre recarga
+  const ejecutar = async (accion: () => Promise<void>, error: string): Promise<boolean> => {
     setOcupado(true);
+    let ok = true;
     try {
       await accion();
-    } catch {
-      avisar(error);
+    } catch (e: any) {
+      ok = false;
+      avisar(e?.message || error, 'No se pudo completar', 'error');
     }
-    await cargarTodo();
-    setOcupado(false);
+    try {
+      await cargarTodo();
+    } catch {
+      // sin conexión: se conserva lo que ya se ve en pantalla
+    } finally {
+      setOcupado(false);
+    }
+    return ok;
   };
 
   const iniciarRecorrido = () => {
-    if (!conductor?.idVehiculo) return avisar('No tienes un vehículo asignado. Contacta al administrador.');
+    if (!conductor?.idVehiculo) {
+      return avisar('No tienes un vehículo asignado. Contacta al administrador.', 'Sin vehículo', 'advertencia');
+    }
     ejecutar(async () => {
       const res = await fetchApi('/Historial/iniciar', {
         method: 'POST',
         body: JSON.stringify({ idVehiculo: conductor.idVehiculo, idConductor: conductor.idConductor }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(await leerMensajeError(res, 'No se pudo iniciar el recorrido.'));
       const nuevo = await res.json();
       // Cada estudiante de la ruta arranca en "Pendiente" para este viaje
       await Promise.all(
@@ -250,14 +300,25 @@ export default function ConductorScreen() {
   const finalizarRecorrido = () => {
     const pendientes = asistencias.filter(a => a.estadoAbordaje === 'Pendiente').length;
     const mensaje = pendientes
-      ? `Aún hay ${pendientes} estudiante(s) pendiente(s). ¿Finalizar el recorrido de todas formas?`
-      : '¿Finalizar el recorrido?';
-    confirmar(mensaje, 'Finalizar', () =>
-      ejecutar(async () => {
+      ? `Aún hay ${pendientes} estudiante(s) pendiente(s). Si finalizas, quedarán sin registrar.`
+      : 'Se guardará en el historial y se avisará a los acudientes.';
+    const idViaje = viaje.idViaje;
+    confirmar(
+      mensaje,
+      'Finalizar',
+      async () => {
+        // Se apaga todo lo del recorrido antes de llamar al API para que nada siga enviando ubicaciones
         setSimulando(false);
-        const res = await fetchApi(`/Historial/finalizar?idViaje=${viaje.idViaje}`, { method: 'PUT' });
-        if (!res.ok) throw new Error();
-      }, 'No se pudo finalizar el recorrido.')
+        const ok = await ejecutar(async () => {
+          const res = await fetchApi(`/Historial/finalizar?idViaje=${idViaje}`, { method: 'PUT' });
+          if (!res.ok) throw new Error(await leerMensajeError(res, 'No se pudo finalizar el recorrido.'));
+          // La pantalla cambia de inmediato aunque la recarga tarde (p. ej. servidor lento)
+          setViaje((v: any) => (v?.idViaje === idViaje ? { ...v, estadoViaje: 'Finalizado' } : v));
+          detenerGps().catch(() => {});
+        }, 'No se pudo finalizar el recorrido.');
+        if (ok) avisar('El recorrido quedó guardado en el historial.', 'Recorrido finalizado', 'exito');
+      },
+      { titulo: '¿Finalizar el recorrido?', peligro: true }
     );
   };
 
@@ -267,7 +328,7 @@ export default function ConductorScreen() {
         method: 'PUT',
         body: JSON.stringify({ estadoAbordaje }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(await leerMensajeError(res, 'No se pudo actualizar la asistencia.'));
     }, 'No se pudo actualizar la asistencia.');
 
   if (cargando) {
@@ -288,31 +349,89 @@ export default function ConductorScreen() {
   const { siguiente } = progresoRuta(estado, paradas, estudiantes, asistencias);
   const ubicacionViaje =
     viaje?.latitudActual != null ? { latitude: Number(viaje.latitudActual), longitude: Number(viaje.longitudActual) } : null;
+  const posicionBus = estado === 'en-curso' ? gps || ubicacionViaje : null;
 
-  // Asistencia por reconocimiento facial: foto del estudiante al subir → AWS Rekognition → "Abordó"
+  // Paradas que faltan: no visitadas y con algún estudiante pendiente (o sin estudiantes asignados)
+  const estudiantesDeParada = (idParada: number) => estudiantes.filter(e => e.idParada === idParada);
+  const paradasPendientes = paradas
+    .map((p, i) => ({ p, i }))
+    .filter(({ p, i }) => {
+      if (visitadas.includes(i)) return false;
+      const deEsta = estudiantesDeParada(p.idParada);
+      if (deEsta.length === 0) return true;
+      return deEsta.some(e => {
+        const a = asistenciaDe(e.idEstudiante);
+        return !a || a.estadoAbordaje === 'Pendiente';
+      });
+    })
+    .map(({ i }) => i);
+  const navegacion = posicionBus && paradasPendientes.length ? { origen: posicionBus, pendientes: paradasPendientes } : null;
+  const proxima = plan ? paradas[plan.siguiente] : null;
+  const esperanEnProxima = proxima
+    ? estudiantesDeParada(proxima.idParada).filter(e => asistenciaDe(e.idEstudiante)?.estadoAbordaje === 'Pendiente')
+    : [];
+
+  // Asistencia por reconocimiento facial: foto del estudiante al subir → AWS Rekognition →
+  // la app dice su nombre en voz alta y el conductor confirma que sí es esa persona antes de marcar "Abordó"
   const asistenciaFacial = async () => {
+    let est: { idEstudiante: number; nombre: string; similitud: number };
     try {
       const foto = await tomarFotoBase64('camara');
       if (!foto) return;
       setOcupado(true);
-      const est = await identificarRostro(foto);
-      const a = asistenciaDe(est.idEstudiante);
-      if (!a) return avisar(`${est.nombre} no pertenece a esta ruta.`);
-      if (a.estadoAbordaje === 'Abordo') return avisar(`${est.nombre} ya estaba registrado a bordo.`);
-      await marcar(a.idAsistencia, 'Abordo');
-      avisar(`✅ ${est.nombre} abordó el bus (coincidencia ${est.similitud}%).`);
+      est = await identificarRostro(foto);
     } catch (e: any) {
-      avisar(e?.message || 'No se pudo tomar la asistencia.');
+      hablar('No te reconocí. Intenta de nuevo.');
+      return avisar(e?.message || 'No se pudo tomar la asistencia.', 'No se reconoció el rostro', 'error');
     } finally {
       setOcupado(false);
     }
+
+    const a = asistenciaDe(est.idEstudiante);
+    if (!a) {
+      hablar(`${est.nombre}, este no es tu bus.`);
+      return avisar(
+        `${est.nombre} no pertenece a esta ruta. Verifica antes de dejarlo subir.`,
+        'Estudiante de otra ruta',
+        'advertencia'
+      );
+    }
+    if (a.estadoAbordaje === 'Abordo') {
+      return avisar(`${est.nombre} ya está registrado a bordo.`, 'Ya abordó', 'info');
+    }
+
+    const e = estudiantes.find(x => x.idEstudiante === est.idEstudiante);
+    const parada = paradas.find(p => p.idParada === e?.idParada)?.nombreParada;
+    hablar(`Hola, ¿eres ${est.nombre}?`);
+    alerta(
+      `¿Es ${est.nombre}?`,
+      `Coincidencia del ${est.similitud}%${parada ? ` · Parada: ${parada}` : ''}.\nConfirma que es la persona antes de registrarla.`,
+      [
+        {
+          text: 'No es',
+          style: 'cancel',
+          onPress: () => avisar('Toma otra foto o márcalo manualmente en la lista.', 'Asistencia no registrada', 'info'),
+        },
+        {
+          text: 'Sí, abordó',
+          onPress: async () => {
+            const ok = await marcar(a.idAsistencia, 'Abordo');
+            if (ok) {
+              hablar(`Bienvenido a bordo, ${est.nombre.split(' ')[0]}.`);
+              avisar(`${est.nombre} quedó registrado a bordo.`, '¡A bordo!', 'exito');
+            }
+          },
+        },
+      ],
+      'rostro'
+    );
   };
 
   const gpsInfo =
     simulando ? { texto: 'Ubicación simulada', color: '#f59e0b', icono: 'flask-outline' as const }
-    : modoGps === 'segundo-plano' ? { texto: 'GPS activo, también con el celular bloqueado', color: RutaColors.success, icono: 'navigate-circle-outline' as const }
-    : modoGps === 'primer-plano' ? { texto: 'GPS activo solo con la app abierta (toca para permitir siempre)', color: '#f59e0b', icono: 'navigate-circle-outline' as const }
-    : modoGps === 'denegado' ? { texto: 'Sin permiso de ubicación (toca para activarlo)', color: RutaColors.danger, icono: 'warning-outline' as const }
+    : modoGps === 'segundo-plano' ? { texto: 'GPS activo (también bloqueado)', color: RutaColors.success, icono: 'navigate-circle-outline' as const }
+    : modoGps === 'primer-plano' ? { texto: 'GPS solo con la app abierta · Toca', color: '#f59e0b', icono: 'navigate-circle-outline' as const }
+    : modoGps === 'denegado' ? { texto: 'Sin permiso de ubicación · Toca', color: RutaColors.danger, icono: 'warning-outline' as const }
     : { texto: 'Iniciando GPS…', color: Colors.mutedText, icono: 'navigate-circle-outline' as const };
 
   const chip =
@@ -456,10 +575,30 @@ export default function ConductorScreen() {
         </ScrollView>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.content}
+          // Espacio extra abajo para que el monitor de somnolencia flotante no tape la lista
+          contentContainerStyle={[styles.content, estado === 'en-curso' && { paddingBottom: 160 }]}
           refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={Colors.primary} />}
         >
-          {/* Tarjeta del Conductor y Vehículo asignado (placa, modelo, capacidad) y ruta asignada */}
+          {/* En recorrido: franja compacta para dejarle el espacio al mapa y a la siguiente parada */}
+          {estado === 'en-curso' ? (
+            <View style={styles.compactCard}>
+              <View style={styles.compactAvatar}>
+                <Ionicons name="person-outline" size={18} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}
+                </Text>
+                <Text style={[styles.accentText, { marginTop: 0 }]} numberOfLines={1}>
+                  {ruta?.nombreRuta || 'Sin ruta asignada'}
+                </Text>
+              </View>
+              <View style={styles.compactPlaca}>
+                <Text style={styles.compactPlacaText}>{vehiculo?.placa || placa || '-'}</Text>
+              </View>
+            </View>
+          ) : (
+          /* Tarjeta del Conductor y Vehículo asignado (placa, modelo, capacidad) y ruta asignada */
           <View style={styles.card}>
             <View style={[styles.row, { marginBottom: 12 }]}>
               <View style={styles.avatar}>
@@ -497,6 +636,7 @@ export default function ConductorScreen() {
               </View>
             </View>
           </View>
+          )}
 
           {!ruta ? (
             <View style={styles.empty}>
@@ -505,7 +645,14 @@ export default function ConductorScreen() {
             </View>
           ) : (
             <>
-              <MapaRuta paradas={paradas} bus={estado === 'en-curso' ? gps || ubicacionViaje : null} onRuta={setInfoRuta}>
+              <MapaRuta
+                paradas={paradas}
+                bus={posicionBus}
+                onRuta={setInfoRuta}
+                navegacion={navegacion}
+                onPlan={setPlan}
+                height={estado === 'en-curso' ? 300 : 260}
+              >
                 <View style={styles.mapOverlayTop}>
                   <View style={[styles.chip, { marginBottom: 0 }]}>
                     <View style={[styles.chipDot, { backgroundColor: chip.color }]} />
@@ -516,23 +663,74 @@ export default function ConductorScreen() {
                   <View style={[styles.chip, { marginBottom: 0 }]}>
                     <Ionicons name="time-outline" size={14} color={Colors.darkText} />
                     <Text style={{ color: Colors.darkText, fontSize: 13, fontWeight: '600' }}>
-                      {infoRuta ? `${infoRuta.duracionMin} min · ${infoRuta.distanciaKm} km` : `${paradas.length} paradas`}
+                      {estado === 'en-curso' && plan
+                        ? `Faltan ${paradasPendientes.length} · ${plan.totalMin} min · ${plan.totalKm} km`
+                        : infoRuta
+                        ? `${infoRuta.duracionMin} min · ${infoRuta.distanciaKm} km`
+                        : `${paradas.length} paradas`}
                     </Text>
                   </View>
                 </View>
               </MapaRuta>
 
+              {/* Siguiente parada según la ruta óptima, con navegación paso a paso en Google Maps */}
+              {estado === 'en-curso' &&
+                (proxima && plan ? (
+                  <View style={styles.nextStopCard}>
+                    <View style={[styles.row, { gap: 12 }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.nextStopLabel}>SIGUIENTE PARADA · #{plan.siguiente + 1}</Text>
+                        <Text style={styles.nextStopName} numberOfLines={1}>
+                          {proxima.nombreParada}
+                        </Text>
+                        <Text style={styles.nextStopMeta}>
+                          {plan.siguienteKm} km · {plan.siguienteMin} min
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.navButton}
+                        onPress={() => navegarA(Number(proxima.latitud), Number(proxima.longitud))}
+                        accessibilityLabel={`Navegar a ${proxima.nombreParada}`}
+                      >
+                        <Ionicons name="navigate" size={16} color={Colors.darker} />
+                        <Text style={styles.navButtonText}>Navegar</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {esperanEnProxima.length > 0 && (
+                      <Text style={[styles.nextStopMeta, { marginTop: 8, color: Colors.darkText }]} numberOfLines={2}>
+                        <Text style={{ color: Colors.primary, fontWeight: '700' }}>Recoger: </Text>
+                        {esperanEnProxima.map(e => `${e.nombre} ${e.apellido || ''}`.trim()).join(', ')}
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <View style={[styles.nextStopCard, styles.row, { gap: 10 }]}>
+                    <Ionicons
+                      name={paradasPendientes.length === 0 ? 'flag-outline' : 'navigate-circle-outline'}
+                      size={22}
+                      color={Colors.primary}
+                    />
+                    <Text style={[styles.nextStopMeta, { flex: 1, marginTop: 0 }]}>
+                      {paradasPendientes.length === 0
+                        ? 'Pasaste por todas las paradas. Cuando llegues, finaliza el recorrido.'
+                        : !posicionBus
+                        ? 'Esperando la señal del GPS para calcular la mejor ruta…'
+                        : 'Calculando la mejor ruta para recoger a los estudiantes…'}
+                    </Text>
+                  </View>
+                ))}
+
               {estado === 'en-curso' && (
-                <View style={[styles.sectionRow, { marginBottom: 10 }]}>
+                <View style={styles.statusRow}>
                   <TouchableOpacity
                     style={[styles.gpsEstado, { flex: 1, marginBottom: 0 }]}
                     onPress={() => modoGps !== 'segundo-plano' && !simulando && Linking.openSettings()}
                     accessibilityRole="button"
                   >
                     <Ionicons name={gpsInfo.icono} size={16} color={gpsInfo.color} />
-                    <Text style={{ color: gpsInfo.color, fontSize: 12, flex: 1 }}>
+                    <Text style={{ color: gpsInfo.color, fontSize: 12, flex: 1 }} numberOfLines={1}>
                       {gpsInfo.texto}
-                      {ultimaSenal ? ` · ${ultimaSenal.toLocaleTimeString()}` : ''}
+                      {ultimaSenal ? ` · ${ultimaSenal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                     </Text>
                   </TouchableOpacity>
                   {paradas.length >= 2 && (
@@ -560,15 +758,33 @@ export default function ConductorScreen() {
                   onPress={finalizarRecorrido}
                   disabled={ocupado}
                 >
-                  <Ionicons name="navigate-outline" size={20} color={RutaColors.danger} />
-                  <Text style={[styles.mainButtonText, { color: RutaColors.danger }]}>Finalizar Recorrido</Text>
+                  {ocupado ? (
+                    <ActivityIndicator color={RutaColors.danger} />
+                  ) : (
+                    <Ionicons name="flag-outline" size={20} color={RutaColors.danger} />
+                  )}
+                  <Text style={[styles.mainButtonText, { color: RutaColors.danger }]}>
+                    {ocupado ? 'Guardando…' : 'Finalizar Recorrido'}
+                  </Text>
                 </TouchableOpacity>
               )}
+              {/* Se puede hacer más de un recorrido al día (ej. mañana y tarde, o volver a probar) */}
               {estado === 'finalizado' && (
-                <View style={[styles.mainButton, { backgroundColor: RutaColors.muted }]}>
-                  <Ionicons name="checkmark-done-outline" size={20} color={Colors.mutedText} />
-                  <Text style={[styles.mainButtonText, { color: Colors.mutedText }]}>Recorrido finalizado</Text>
-                </View>
+                <TouchableOpacity
+                  style={[styles.mainButton, { borderWidth: 1, borderColor: Colors.primary, backgroundColor: 'rgba(0, 212, 255, 0.1)' }]}
+                  onPress={() =>
+                    confirmar(
+                      'El recorrido anterior ya quedó guardado en el historial. Los estudiantes volverán a quedar como pendientes.',
+                      'Iniciar',
+                      iniciarRecorrido,
+                      { titulo: '¿Iniciar un nuevo recorrido?' }
+                    )
+                  }
+                  disabled={ocupado}
+                >
+                  {ocupado ? <ActivityIndicator color={Colors.primary} /> : <Ionicons name="refresh-outline" size={20} color={Colors.primary} />}
+                  <Text style={[styles.mainButtonText, { color: Colors.primary }]}>Iniciar nuevo recorrido</Text>
+                </TouchableOpacity>
               )}
 
               <View style={styles.sectionRow}>

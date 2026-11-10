@@ -5,7 +5,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -92,7 +91,8 @@ export default function FormModal({ visible, titulo, campos, iniciales, onCerrar
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
-      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Android es edge-to-edge: sin behavior los campos de abajo quedan tapados por el teclado */}
+      <KeyboardAvoidingView style={styles.overlay} behavior="padding">
         <View style={styles.sheet}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{titulo}</Text>

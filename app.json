@@ -11,7 +11,10 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.schooltrack.rutas",
       "infoPlist": {
-        "UIBackgroundModes": ["location", "audio"]
+        "UIBackgroundModes": [
+          "location",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -23,7 +26,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["CAMERA", "VIBRATE"]
+      "permissions": [
+        "CAMERA",
+        "VIBRATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -70,7 +76,8 @@
             "minSdkVersion": 26
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
