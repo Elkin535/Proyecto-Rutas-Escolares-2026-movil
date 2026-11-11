@@ -19,6 +19,11 @@
     },
     "android": {
       "package": "com.schooltrack.rutas",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDdWBhU5kQ1iOQd0UKb8jRCOedYKocXA2k"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
