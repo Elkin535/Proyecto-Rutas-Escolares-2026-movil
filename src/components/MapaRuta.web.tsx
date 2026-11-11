@@ -1,14 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
+import { forwardRef } from 'react';
 import { Text, View } from 'react-native';
 
 import { Colors } from '../constants/Colors';
 import { styles } from '../styles/ruta.styles';
-import type { MapaRutaProps } from './MapaRuta';
+import type { MapaRutaProps, MapaRutaRef } from './MapaRuta';
 
 // react-native-maps no funciona en navegador: en web se muestra un aviso y las paradas en texto
-export default function MapaRuta({ paradas, onPress, height = 260, children }: MapaRutaProps) {
+const MapaRuta = forwardRef<MapaRutaRef, MapaRutaProps>(function MapaRuta(
+  { paradas, onPress, height = 260, style, children }: MapaRutaProps,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _ref
+) {
+  const boxStyle: any = height != null ? { height } : { flex: 1 };
   return (
-    <View style={[styles.mapBox, { height, alignItems: 'center', justifyContent: 'center', padding: 16 }]}>
+    <View style={[styles.mapBox, boxStyle, style, { alignItems: 'center', justifyContent: 'center', padding: 16 }]}>
       {children}
       <Ionicons name="map-outline" size={36} color={Colors.placeholder} />
       <Text style={[styles.emptyText, { marginTop: 8 }]}>
@@ -18,4 +24,6 @@ export default function MapaRuta({ paradas, onPress, height = 260, children }: M
       </Text>
     </View>
   );
-}
+});
+
+export default MapaRuta;

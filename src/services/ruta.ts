@@ -90,6 +90,83 @@ export const distanciaKm = (lat1: number, lon1: number, lat2: number, lon2: numb
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+// Rumbo / ángulo de orientación (bearing) en grados (0 a 360) entre dos coordenadas
+export const calcularRumbo = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const toRad = (g: number) => (g * Math.PI) / 180;
+  const dLon = toRad(lon2 - lon1);
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const y = Math.sin(dLon) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLon);
+  const brng = (Math.atan2(y, x) * 180) / Math.PI;
+  return (brng + 360) % 360;
+};
+
+export type InfoEta = {
+  duracionMin: number;
+  duracionTexto: string;
+  distanciaKm: string;
+  distanciaNum: number;
+  horaEstimada: string;
+  esInminente: boolean;
+};
+
+/**
+ * Calcula el tiempo estimado de llegada (ETA) y distancia desde el bus a un punto destino (parada o colegio).
+ * Usa OSRM para precisión vial y conmuta a cálculo urbano estimado si la red no está disponible.
+ */
+export const calcularEta = async (
+  origen: { latitude: number; longitude: number },
+  destino: { latitude: number; longitude: number },
+  paradasIntermedias = 0
+): Promise<InfoEta> => {
+  let distKm = 0;
+  let durMin = 0;
+
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${origen.longitude},${origen.latitude};${destino.longitude},${destino.latitude}?overview=false`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    const data = await res.json();
+    if (data.code === 'Ok' && data.routes?.[0]) {
+      distKm = data.routes[0].distance / 1000;
+      durMin = Math.round(data.routes[0].duration / 60);
+    } else {
+      throw new Error('OSRM fallback');
+    }
+  } catch {
+    // Estimación urbana: distancia Haversine * 1.35 factor vial
+    distKm = distanciaKm(origen.latitude, origen.longitude, destino.latitude, destino.longitude) * 1.35;
+    // Velocidad promedio de bus escolar urbano en Colombia: ~24 km/h (0.4 km/minuto)
+    durMin = Math.round((distKm / 24) * 60);
+  }
+
+  // Agrega ~1.5 minutos por cada parada intermedia que falte visitar
+  if (paradasIntermedias > 0) {
+    durMin += Math.round(paradasIntermedias * 1.5);
+  }
+
+  durMin = Math.max(1, durMin);
+
+  // Calcular la hora estimada de llegada
+  const ahora = new Date();
+  ahora.setMinutes(ahora.getMinutes() + durMin);
+  const hh = ahora.getHours();
+  const mm = ahora.getMinutes();
+  const horaEstimada = `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'a. m.' : 'p. m.'}`;
+
+  const esInminente = distKm < 0.6 || durMin <= 2;
+  const duracionTexto = esInminente ? '¡Llegando!' : `${durMin} min`;
+
+  return {
+    duracionMin: durMin,
+    duracionTexto,
+    distanciaKm: `${distKm.toFixed(1)} km`,
+    distanciaNum: distKm,
+    horaEstimada,
+    esInminente,
+  };
+};
+
 export const pillAsistencia = (a?: any): { text: string; color: string } => {
   switch (a?.estadoAbordaje) {
     case 'Abordo':

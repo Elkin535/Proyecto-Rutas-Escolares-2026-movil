@@ -1,16 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ReactNode, useEffect, useRef, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { ReactNode, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { StyleProp, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import MapView, { LatLng, Marker, Polyline } from 'react-native-maps';
 
 import { Colors } from '../constants/Colors';
 import { styles } from '../styles/ruta.styles';
+import MarcadorBusAnimado from './MarcadorBusAnimado';
 
 export type ParadaMapa = { latitud: number; longitud: number; nombreParada: string };
 
 export interface MapaRutaProps {
   paradas: ParadaMapa[];
   bus?: LatLng | null;
+  placaBus?: string;
+  animarBus?: boolean;
   // Índice de la parada del hijo (acudiente), se pinta en ámbar como en la web
   destacada?: number;
   // Diseñador de rutas: cada toque en el mapa agrega una parada
@@ -20,9 +23,16 @@ export interface MapaRutaProps {
   // Modo navegación (conductor en recorrido): ruta óptima desde el bus por las paradas que faltan
   navegacion?: { origen: LatLng; pendientes: number[] } | null;
   onPlan?: (plan: PlanRuta | null) => void;
-  height?: number;
+  height?: number | string;
+  style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }
+
+export type MapaRutaRef = {
+  centrar: () => void;
+  centrarEnBus: () => void;
+  centrarEnParada: (index: number) => void;
+};
 
 export type PlanRuta = {
   orden: number[]; // índices de las paradas en el orden óptimo de visita
@@ -81,17 +91,23 @@ const MAP_STYLE = [
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
 ];
 
-export default function MapaRuta({
-  paradas,
-  bus,
-  destacada,
-  onPress,
-  onRuta,
-  navegacion,
-  onPlan,
-  height = 260,
-  children,
-}: MapaRutaProps) {
+const MapaRuta = forwardRef<MapaRutaRef, MapaRutaProps>(function MapaRuta(
+  {
+    paradas,
+    bus,
+    placaBus,
+    animarBus = true,
+    destacada,
+    onPress,
+    onRuta,
+    navegacion,
+    onPlan,
+    height = 260,
+    style,
+    children,
+  },
+  ref
+) {
   const mapRef = useRef<MapView>(null);
   const [trazo, setTrazo] = useState<LatLng[]>([]);
   const [trazoPlan, setTrazoPlan] = useState<LatLng[]>([]);
@@ -176,14 +192,47 @@ export default function MapaRuta({
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    centrar,
+    centrarEnBus: () => {
+      if (bus) {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: bus.latitude,
+            longitude: bus.longitude,
+            latitudeDelta: 0.015,
+            longitudeDelta: 0.015,
+          },
+          1000
+        );
+      }
+    },
+    centrarEnParada: (index: number) => {
+      const p = coords[index];
+      if (p) {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: p.latitude,
+            longitude: p.longitude,
+            latitudeDelta: 0.012,
+            longitudeDelta: 0.012,
+          },
+          1000
+        );
+      }
+    },
+  }));
+
   // Al cargar las paradas por primera vez se encuadra toda la ruta (no en el diseñador, para no saltar)
   useEffect(() => {
     if (!onPress) centrar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clave]);
 
+  const boxStyle: any = height != null ? { height } : { flex: 1 };
+
   return (
-    <View style={[styles.mapBox, { height }]}>
+    <View style={[styles.mapBox, boxStyle, style]}>
       <MapView
         ref={mapRef}
         style={{ flex: 1 }}
@@ -231,11 +280,15 @@ export default function MapaRuta({
           );
         })}
         {bus && (
-          <Marker coordinate={bus} title="Bus escolar" anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.mapBus}>
-              <Ionicons name="bus" size={18} color={Colors.darker} />
-            </View>
-          </Marker>
+          animarBus ? (
+            <MarcadorBusAnimado bus={bus} placa={placaBus} />
+          ) : (
+            <Marker coordinate={bus} title="Bus escolar" anchor={{ x: 0.5, y: 0.5 }}>
+              <View style={styles.mapBus}>
+                <Ionicons name="bus" size={18} color={Colors.darker} />
+              </View>
+            </Marker>
+          )
         )}
       </MapView>
 
@@ -248,4 +301,6 @@ export default function MapaRuta({
       )}
     </View>
   );
-}
+});
+
+export default MapaRuta;
