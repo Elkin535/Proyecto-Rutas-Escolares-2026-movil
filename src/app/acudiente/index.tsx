@@ -1,21 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
 import { HubConnectionBuilder } from '@microsoft/signalr';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import BottomNav from '../../components/BottomNav';
-import MapaRuta from '../../components/MapaRuta';
+import MapaRuta, { MapaRutaRef } from '../../components/MapaRuta';
 import MenuUsuario from '../../components/MenuUsuario';
+import PanelEstudianteBottomSheet from '../../components/PanelEstudianteBottomSheet';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
 import { API_URL, getJson, getStoredAuthData } from '../../services/api';
 import { registrarPush } from '../../services/push';
 import {
-  ESTADO_LABEL,
-  distanciaKm,
+  InfoEta,
+  calcularEta,
   estadoDeViaje,
   ordenarPorParada,
-  pillAsistencia,
   placaDeRuta,
   progresoRuta,
   viajeDeHoy,
@@ -27,13 +35,13 @@ const TABS = [
   { key: 'perfil', label: 'Perfil', icon: 'person-circle-outline' as const },
 ];
 
-// La ubicación del bus llega por SignalR; el sondeo solo refresca asistencias y estado del viaje
 const REFRESCO_MS = 30000;
 const HUB_URL = `${API_URL.replace(/\/api$/, '')}/trackingHub`;
 
 type RutaInfo = { ruta: any; paradas: any[]; ordenados: any[]; viaje: any; asistencias: any[] };
 
 export default function AcudienteScreen() {
+  const mapaRef = useRef<MapaRutaRef>(null);
   const [tab, setTab] = useState('inicio');
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
@@ -42,6 +50,10 @@ export default function AcudienteScreen() {
   const [acudiente, setAcudiente] = useState<any>(null);
   const [hijos, setHijos] = useState<any[]>([]);
   const [rutasInfo, setRutasInfo] = useState<Record<number, RutaInfo>>({});
+
+  // Ubicación en tiempo real del bus por cada viaje activo
+  const [buses, setBuses] = useState<Record<number, { latitude: number; longitude: number }>>({});
+  const [infoEta, setInfoEta] = useState<InfoEta | null>(null);
 
   const cargarTodo = useCallback(async () => {
     const { usuario: u } = await getStoredAuthData();
@@ -83,13 +95,13 @@ export default function AcudienteScreen() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarTodo().finally(() => setCargando(false));
     const id = setInterval(cargarTodo, REFRESCO_MS);
     return () => clearInterval(id);
   }, [cargarTodo]);
 
-  // Una conexión por viaje activo: el evento RecibirUbicacion no trae el id del viaje
-  const [buses, setBuses] = useState<Record<number, { latitude: number; longitude: number }>>({});
+  // Conexión SignalR por viaje activo para recibir ubicación en vivo del bus
   const viajesActivos = Object.values(rutasInfo)
     .filter(i => i.viaje?.estadoViaje === 'En progreso')
     .map(i => i.viaje.idViaje as number)
@@ -120,6 +132,82 @@ export default function AcudienteScreen() {
     setRefrescando(false);
   };
 
+  // Estudiante a cargo y su información de ruta
+  const estudianteActivo = hijos[0] || null;
+  const infoActiva = estudianteActivo?.idRuta ? rutasInfo[estudianteActivo.idRuta] : undefined;
+
+  const estado = estadoDeViaje(infoActiva?.viaje);
+  const bus =
+    estado !== 'en-curso'
+      ? null
+      : (infoActiva?.viaje?.idViaje && buses[infoActiva.viaje.idViaje]) ||
+        (infoActiva?.viaje?.latitudActual != null
+          ? { latitude: Number(infoActiva.viaje.latitudActual), longitude: Number(infoActiva.viaje.longitudActual) }
+          : null);
+
+  const miParadaIndex =
+    infoActiva?.paradas && estudianteActivo
+      ? infoActiva.paradas.findIndex(p => p.idParada === estudianteActivo.idParada)
+      : -1;
+
+  const placa = placaDeRuta(infoActiva?.ruta?.descripcion);
+
+  // Recálculo dinámico de ETA en tiempo real
+  useEffect(() => {
+    if (!bus || !infoActiva || estado !== 'en-curso' || !estudianteActivo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInfoEta(null);
+      return;
+    }
+
+    const { busIndex } = progresoRuta(
+      estado,
+      infoActiva.paradas,
+      infoActiva.ordenados,
+      infoActiva.asistencias
+    );
+    const asistencia = infoActiva.asistencias.find(
+      a => a.idEstudiante === estudianteActivo.idEstudiante
+    );
+    const abordo = asistencia?.estadoAbordaje === 'Abordo';
+
+    // Si ya abordó, el destino es la última parada (colegio o terminal); si no, su parada asignada
+    const destinoIndex = abordo ? infoActiva.paradas.length - 1 : miParadaIndex;
+    const destinoParada = infoActiva.paradas[destinoIndex];
+
+    if (!destinoParada) {
+      setInfoEta(null);
+      return;
+    }
+
+    const paradasIntermedias = Math.max(0, destinoIndex - busIndex - 1);
+    const destinoCoord = {
+      latitude: Number(destinoParada.latitud),
+      longitude: Number(destinoParada.longitud),
+    };
+
+    let vigente = true;
+    calcularEta(bus, destinoCoord, paradasIntermedias)
+      .then(eta => {
+        if (vigente) setInfoEta(eta);
+      })
+      .catch(() => {
+        if (vigente) setInfoEta(null);
+      });
+
+    return () => {
+      vigente = false;
+    };
+  }, [
+    bus?.latitude,
+    bus?.longitude,
+    estudianteActivo?.idEstudiante,
+    estudianteActivo?.idParada,
+    infoActiva,
+    estado,
+    miParadaIndex,
+  ]);
+
   if (cargando) {
     return (
       <View style={styles.loading}>
@@ -130,9 +218,12 @@ export default function AcudienteScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Cabecera superior común */}
       <View style={styles.header}>
         <Text style={styles.headerKicker}>centro de control</Text>
-        <Text style={styles.headerTitle}>{tab === 'inicio' ? `Hola, ${usuario?.nombre || 'acudiente'}` : 'MI PERFIL'}</Text>
+        <Text style={styles.headerTitle}>
+          {tab === 'inicio' ? `Hola, ${usuario?.nombre || 'acudiente'}` : 'MI PERFIL'}
+        </Text>
         <View style={styles.headerMenu}>
           <MenuUsuario usuario={usuario} rol="Acudiente" />
         </View>
@@ -146,99 +237,135 @@ export default function AcudienteScreen() {
             { icon: 'people-outline', label: 'Estudiantes a cargo', value: String(hijos.length) },
           ]}
         />
-      ) : (
+      ) : hijos.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={Colors.primary} />}
+          refreshControl={
+            <RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={Colors.primary} />
+          }
         >
-          {hijos.length === 0 && (
-            <View style={styles.empty}>
-              <Ionicons name="school-outline" size={40} color={Colors.placeholder} />
-              <Text style={styles.emptyText}>No tienes estudiantes registrados.{'\n'}Contacta al administrador.</Text>
-            </View>
-          )}
-
-          {hijos.map(e => {
-            const info = e.idRuta ? rutasInfo[e.idRuta] : undefined;
-            const nombre = `${e.nombre} ${e.apellido || ''}`.trim();
-
-            if (!info) {
-              return (
-                <View key={e.idEstudiante} style={styles.card}>
-                  <Text style={styles.name}>{nombre}</Text>
-                  <Text style={styles.mutedText}>{e.colegio || 'Sin colegio'}</Text>
-                  <Text style={[styles.mutedText, { marginTop: 8 }]}>Sin ruta asignada.</Text>
-                </View>
-              );
-            }
-
-            const estado = estadoDeViaje(info.viaje);
-            const { busIndex } = progresoRuta(estado, info.paradas, info.ordenados, info.asistencias);
-            const asistencia = info.asistencias.find(a => a.idEstudiante === e.idEstudiante);
-            const pill = estado === 'sin-iniciar' ? { text: 'El recorrido no ha iniciado', color: Colors.mutedText } : pillAsistencia(asistencia);
-            const miParada = info.paradas.findIndex(p => p.idParada === e.idParada);
-            const faltan = miParada - busIndex;
-            const bus =
-              estado !== 'en-curso' ? null
-              : buses[info.viaje.idViaje] ||
-                (info.viaje.latitudActual != null
-                  ? { latitude: Number(info.viaje.latitudActual), longitude: Number(info.viaje.longitudActual) }
-                  : null);
-            const parada = info.paradas[miParada];
-            const km = bus && parada ? distanciaKm(bus.latitude, bus.longitude, Number(parada.latitud), Number(parada.longitud)) : null;
-            const esperando = estado === 'en-curso' && asistencia?.estadoAbordaje === 'Pendiente';
-
-            const chip =
-              esperando && km != null && km < 0.5
-                ? { text: `¡El bus está llegando a tu parada!`, color: '#f59e0b' }
-                : esperando && km != null
-                  ? { text: `El bus está a ${km.toFixed(1)} km de tu parada`, color: Colors.primary }
-                : esperando && faltan > 0
-                  ? { text: `El bus está a ${faltan} parada(s) de ${e.nombre}`, color: Colors.primary }
-                : estado === 'en-curso'
-                  ? { text: 'Bus en movimiento', color: RutaColors.success }
-                  : { text: `Recorrido ${ESTADO_LABEL[estado].toLowerCase()}`, color: estado === 'finalizado' ? RutaColors.success : Colors.mutedText };
-
-            return (
-              <View key={e.idEstudiante}>
-                <View style={[styles.card, styles.row]}>
-                  <View style={styles.avatar}>
-                    <Ionicons name="school-outline" size={22} color={Colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{nombre}</Text>
-                    <Text style={styles.accentText}>{info.ruta?.nombreRuta}</Text>
-                    <Text style={styles.mutedText}>
-                      {info.paradas[miParada]?.nombreParada || 'Sin parada'} · {e.colegio || 'Sin colegio'}
-                    </Text>
-                    <View style={[styles.pill, { backgroundColor: `${pill.color}22` }]}>
-                      <Text style={[styles.pillText, { color: pill.color }]}>{pill.text}</Text>
-                    </View>
-                  </View>
-                </View>
-                <MapaRuta paradas={info.paradas} bus={bus} destacada={miParada}>
-                  <View style={styles.mapOverlayTop}>
-                    <View style={[styles.chip, { marginBottom: 0 }]}>
-                      <View style={[styles.chipDot, { backgroundColor: chip.color }]} />
-                      <Text style={{ color: chip.color, fontSize: 13, fontWeight: '600' }}>{chip.text}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.mapOverlayBottom}>
-                    <View style={[styles.chip, { marginBottom: 0 }]}>
-                      <Ionicons name="bus-outline" size={14} color={Colors.darkText} />
-                      <Text style={{ color: Colors.darkText, fontSize: 13, fontWeight: '600' }}>
-                        Placa {placaDeRuta(info.ruta?.descripcion) || '-'}
-                      </Text>
-                    </View>
-                  </View>
-                </MapaRuta>
-              </View>
-            );
-          })}
+          <View style={styles.empty}>
+            <Ionicons name="school-outline" size={40} color={Colors.placeholder} />
+            <Text style={styles.emptyText}>
+              No tienes estudiantes registrados.{'\n'}Contacta al administrador.
+            </Text>
+          </View>
         </ScrollView>
+      ) : (
+        /* Vista de Monitoreo en Tiempo Real: Mapa con Bus Animado + Bottom Sheet */
+        <View style={localStyles.mapAreaContainer}>
+          {/* Mapa con Bus Animado e itinerario */}
+          <MapaRuta
+            ref={mapaRef}
+            paradas={infoActiva?.paradas || []}
+            bus={bus}
+            placaBus={placa}
+            animarBus={true}
+            destacada={miParadaIndex}
+            height="100%"
+            style={localStyles.mapView}
+          >
+            {/* Overlay superior con indicador de estado en vivo */}
+            <View style={localStyles.topOverlay}>
+              <View style={localStyles.liveIndicatorBadge}>
+                <View
+                  style={[
+                    localStyles.liveDot,
+                    { backgroundColor: estado === 'en-curso' ? '#22c55e' : '#94a3b8' },
+                  ]}
+                />
+                <Text style={localStyles.liveText}>
+                  {estado === 'en-curso' ? 'SEGUIMIENTO EN VIVO' : 'RUTA INACTIVA'}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={localStyles.refreshBtn}
+                onPress={onRefresh}
+                accessibilityLabel="Refrescar datos"
+              >
+                <Ionicons
+                  name={refrescando ? 'sync' : 'refresh-outline'}
+                  size={18}
+                  color={Colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
+          </MapaRuta>
+
+          {/* Panel Flotante Deslizable (Bottom Sheet) */}
+          <PanelEstudianteBottomSheet
+            estudiante={estudianteActivo}
+            infoRuta={infoActiva}
+            bus={bus}
+            infoEta={infoEta}
+            onCentrarBus={() => mapaRef.current?.centrarEnBus()}
+            onCentrarParada={() => {
+              if (miParadaIndex >= 0) mapaRef.current?.centrarEnParada(miParadaIndex);
+            }}
+            onCentrarRuta={() => mapaRef.current?.centrar()}
+          />
+        </View>
       )}
 
+      {/* Barra de navegación inferior */}
       <BottomNav tabs={TABS} active={tab} onChange={setTab} />
     </View>
   );
 }
+
+const localStyles = StyleSheet.create({
+  mapAreaContainer: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  mapView: {
+    flex: 1,
+    marginBottom: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+  },
+  topOverlay: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  liveIndicatorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(8, 17, 32, 0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  liveText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  refreshBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(8, 17, 32, 0.85)',
+    borderWidth: 1,
+    borderColor: RutaColors.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

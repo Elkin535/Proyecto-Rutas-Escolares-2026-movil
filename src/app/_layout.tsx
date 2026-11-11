@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DialogoHost } from '../components/Dialogo';
 
@@ -79,7 +80,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
@@ -88,7 +89,7 @@ export default function RootLayout() {
       </Stack>
       {/* Avisos y confirmaciones con el diseño de la app (en lugar del Alert blanco del sistema) */}
       <DialogoHost />
-    </>
+    </GestureHandlerRootView>
   );
 }
 
