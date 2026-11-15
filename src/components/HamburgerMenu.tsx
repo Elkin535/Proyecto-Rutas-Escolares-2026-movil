@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -124,9 +125,11 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
             {/* Cabecera del Drawer */}
             <View style={styles.drawerHeader}>
               <View style={styles.brandRow}>
-                <View style={styles.brandIconCircle}>
-                  <Text style={styles.brandEmoji}>🚌</Text>
-                </View>
+                <Image
+                  source={require('../../assets/images/logo.png')}
+                  style={styles.brandLogo}
+                  resizeMode="contain"
+                />
                 <View>
                   <Text style={styles.brandTitle}>SchoolTrack</Text>
                   <Text style={styles.brandSubtitle}>Rutas Escolares 2026</Text>
@@ -342,6 +345,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  brandLogo: {
+    width: 38,
+    height: 38,
   },
   brandIconCircle: {
     width: 36,
