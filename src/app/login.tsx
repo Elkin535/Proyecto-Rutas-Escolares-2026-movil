@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -176,9 +177,11 @@ export default function LoginScreen() {
       >
         {/* Cabecera */}
         <View style={styles.headerContainer}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.busIcon}>🚌</Text>
-          </View>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>SchoolTrack</Text>
           <Text style={styles.subtitle}>Rutas y Transporte Escolar</Text>
         </View>

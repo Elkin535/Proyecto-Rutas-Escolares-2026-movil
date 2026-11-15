@@ -17,6 +17,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  logoImage: {
+    width: 90,
+    height: 90,
+    marginBottom: 12,
+  },
   iconCircle: {
     width: 60,
     height: 60,

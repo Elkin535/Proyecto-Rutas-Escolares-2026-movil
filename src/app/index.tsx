@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '../constants/Colors';
 import { getRoleRoute, getStoredAuthData } from '../services/api';
@@ -49,9 +49,11 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconCircle}>
-        <Text style={styles.busIcon}>🚌</Text>
-      </View>
+      <Image
+        source={require('../../assets/images/logo.png')}
+        style={styles.logoImage}
+        resizeMode="contain"
+      />
       <Text style={styles.title}>SchoolTrack</Text>
       <Text style={styles.subtitle}>Rutas y Transporte Escolar</Text>
 
@@ -73,19 +75,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0, 212, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: 110,
+    height: 110,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.3)',
-  },
-  busIcon: {
-    fontSize: 40,
   },
   title: {
     fontSize: 28,
