@@ -2,11 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const Jimp = require('jimp-compact');
 
-const userUploadedPath = 'C:/Users/KAROL CAICEDO/.gemini/antigravity/brain/c2e34348-455f-483e-b0ab-89640a87b3d7/.user_uploaded/media_1794701956248_cedf16fa.jpg';
+const userUploadedPath = 'C:/Users/KAROL CAICEDO/.gemini/antigravity/brain/c2e34348-455f-483e-b0ab-89640a87b3d7/.user_uploaded/media_1794799589813_ac1da290.jpg';
 const assetsDir = path.resolve(__dirname, '../assets/images');
 
 async function processIcons() {
-  console.log('Loading source image...');
+  console.log('Loading new source image...');
   const img = await Jimp.read(userUploadedPath);
   const w = img.bitmap.width;
   const h = img.bitmap.height;
@@ -56,7 +56,18 @@ async function processIcons() {
   await bg.writeAsync(bgPath);
   console.log('Created:', bgPath);
 
-  // 5. Update Android native mipmaps if android/ exists
+  // 5. Save splash-icon.png
+  const splashPath = path.join(assetsDir, 'splash-icon.png');
+  await transparentImg.writeAsync(splashPath);
+  console.log('Created:', splashPath);
+
+  // 6. Save favicon.png
+  const favicon = transparentImg.clone().resize(48, 48);
+  const faviconPath = path.join(assetsDir, 'favicon.png');
+  await favicon.writeAsync(faviconPath);
+  console.log('Created:', faviconPath);
+
+  // 7. Update Android native mipmaps if android/ exists
   const resDir = path.resolve(__dirname, '../android/app/src/main/res');
   if (fs.existsSync(resDir)) {
     const densities = [
@@ -87,7 +98,7 @@ async function processIcons() {
     }
   }
 
-  console.log('Done generating all logo and icon assets!');
+  console.log('Done generating all new logo and icon assets!');
 }
 
 processIcons().catch((err) => {
