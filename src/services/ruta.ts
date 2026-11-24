@@ -55,9 +55,15 @@ export const viajeDeHoy = (historial: any[], filtro: (h: any) => boolean) => {
 export const estadoDeViaje = (viaje: any): EstadoRecorrido =>
   !viaje ? 'sin-iniciar' : viaje.estadoViaje === 'En progreso' ? 'en-curso' : 'finalizado';
 
-// La ruta guarda "Conductor: X | Vehículo: Y" en la descripción (misma lógica que el admin)
+// La ruta guarda "Conductor: X | Vehículo: Y | Tel: Z" en la descripción (misma lógica que el admin)
 export const placaDeRuta = (descripcion?: string) =>
-  descripcion?.split(' | ').find(p => p.startsWith('Vehículo: '))?.replace('Vehículo: ', '');
+  descripcion?.split(' | ').find(p => p.startsWith('Vehículo: '))?.replace('Vehículo: ', '').trim();
+
+export const conductorDeRuta = (descripcion?: string) =>
+  descripcion?.split(' | ').find(p => p.startsWith('Conductor: '))?.replace('Conductor: ', '').trim();
+
+export const telefonoDeRuta = (descripcion?: string) =>
+  descripcion?.split(' | ').find(p => p.startsWith('Tel: '))?.replace('Tel: ', '').trim();
 
 // Estudiantes de la ruta en el orden en que el bus visita sus paradas (sin parada van al final)
 export const ordenarPorParada = (estudiantes: any[], paradas: any[]) => {
@@ -170,9 +176,15 @@ export const calcularEta = async (
 export const pillAsistencia = (a?: any): { text: string; color: string } => {
   switch (a?.estadoAbordaje) {
     case 'Abordo':
-      return { text: `Abordado · ${formatHora(a.horaAbordaje)}`, color: RutaColors.success };
+      return {
+        text: `Abordado (recogido)${a.horaAbordaje ? ` · ${formatHora(a.horaAbordaje)}` : ''}`,
+        color: RutaColors.success,
+      };
     case 'Entregado':
-      return { text: `Entregado · ${formatHora(a.horaEntrega)}`, color: RutaColors.success };
+      return {
+        text: `Entregado (en colegio/casa)${a.horaEntrega ? ` · ${formatHora(a.horaEntrega)}` : ''}`,
+        color: RutaColors.warning,
+      };
     case 'Ausente':
       return { text: 'Ausente', color: RutaColors.danger };
     default:

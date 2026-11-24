@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Linking,
   PanResponder,
   ScrollView,
   StyleSheet,
@@ -15,29 +16,39 @@ import { Colors } from '../constants/Colors';
 import {
   ESTADO_LABEL,
   InfoEta,
+  conductorDeRuta,
   estadoDeViaje,
   formatHora,
   placaDeRuta,
   progresoRuta,
+  telefonoDeRuta,
 } from '../services/ruta';
 import { RutaColors } from '../styles/ruta.styles';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 // Puntos de anclaje (Snap Points) medidos como altura visible desde la base
-const SNAP_COLLAPSED = 130;
-const SNAP_HALF = 330;
-const SNAP_EXPANDED = Math.min(560, SCREEN_HEIGHT * 0.72);
+const SNAP_COLLAPSED = 145;
+const SNAP_HALF = 360;
+const SNAP_EXPANDED = Math.min(580, SCREEN_HEIGHT * 0.74);
+
+export interface RutaInfoExtendida {
+  ruta: any;
+  paradas: any[];
+  ordenados: any[];
+  viaje: any;
+  asistencias: any[];
+  vehiculo?: any;
+  conductorNombre?: string;
+  conductorTelefono?: string;
+}
 
 interface PanelEstudianteBottomSheetProps {
   estudiante: any;
-  infoRuta?: {
-    ruta: any;
-    paradas: any[];
-    ordenados: any[];
-    viaje: any;
-    asistencias: any[];
-  };
+  estudiantes?: any[];
+  rutasInfo?: Record<number, RutaInfoExtendida>;
+  onSelectEstudiante?: (idEstudiante: number) => void;
+  infoRuta?: RutaInfoExtendida;
   bus?: { latitude: number; longitude: number } | null;
   infoEta?: InfoEta | null;
   onCentrarBus?: () => void;
@@ -45,8 +56,45 @@ interface PanelEstudianteBottomSheetProps {
   onCentrarRuta?: () => void;
 }
 
+export function obtenerEstadoEstudiante(est: any, info?: RutaInfoExtendida) {
+  const estado = estadoDeViaje(info?.viaje);
+  const asistencia = (info?.asistencias || []).find(a => a.idEstudiante === est?.idEstudiante);
+  const abordo = asistencia?.estadoAbordaje === 'Abordo';
+  const entregado = asistencia?.estadoAbordaje === 'Entregado';
+  const ausente = asistencia?.estadoAbordaje === 'Ausente';
+  const esperando = estado === 'en-curso' && (!asistencia || asistencia?.estadoAbordaje === 'Pendiente');
+
+  const pill =
+    estado === 'sin-iniciar'
+      ? { text: 'Recorrido sin iniciar', shortText: 'Sin iniciar', color: Colors.mutedText, bg: '#1e293b' }
+      : ausente
+        ? { text: 'Reportado Ausente', shortText: 'Ausente', color: RutaColors.danger, bg: 'rgba(239, 68, 68, 0.15)' }
+        : entregado
+          ? {
+            text: `Entregado${asistencia?.horaEntrega ? ` · ${formatHora(asistencia?.horaEntrega)}` : ''}`,
+            shortText: 'Entregado',
+            color: RutaColors.warning,
+            bg: 'rgba(245, 158, 11, 0.15)',
+          }
+          : abordo
+            ? {
+              text: `A bordo${asistencia?.horaAbordaje ? ` · ${formatHora(asistencia?.horaAbordaje)}` : ''}`,
+              shortText: 'A bordo',
+              color: RutaColors.success,
+              bg: 'rgba(34, 197, 94, 0.15)',
+            }
+            : esperando
+              ? { text: 'Esperando el bus', shortText: 'Esperando', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' }
+              : { text: ESTADO_LABEL[estado], shortText: ESTADO_LABEL[estado], color: Colors.mutedText, bg: '#1e293b' };
+
+  return { estado, asistencia, abordo, entregado, ausente, esperando, pill };
+}
+
 export default function PanelEstudianteBottomSheet({
   estudiante,
+  estudiantes = [],
+  rutasInfo = {},
+  onSelectEstudiante,
   infoRuta,
   bus,
   infoEta,
@@ -83,6 +131,7 @@ export default function PanelEstudianteBottomSheet({
     }
   }, [animarA]);
 
+  /* eslint-disable react-hooks/refs */
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -135,40 +184,27 @@ export default function PanelEstudianteBottomSheet({
       }),
     [animarA, animatedHeight]
   );
+  /* eslint-enable react-hooks/refs */
 
   if (!estudiante) return null;
 
   const nombre = `${estudiante.nombre} ${estudiante.apellido || ''}`.trim();
-  const estado = estadoDeViaje(infoRuta?.viaje);
   const paradas = infoRuta?.paradas || [];
   const ordenados = infoRuta?.ordenados || [];
   const asistencias = infoRuta?.asistencias || [];
-  const asistencia = asistencias.find(a => a.idEstudiante === estudiante.idEstudiante);
+  const { estado, abordo, entregado, esperando, pill } = obtenerEstadoEstudiante(estudiante, infoRuta);
   const miParadaIndex = paradas.findIndex(p => p.idParada === estudiante.idParada);
   const miParada = paradas[miParadaIndex];
   const { busIndex } = progresoRuta(estado, paradas, ordenados, asistencias);
   const faltanParadas = Math.max(0, miParadaIndex - busIndex);
 
-  // Estados semánticos del estudiante
-  const abordo = asistencia?.estadoAbordaje === 'Abordo';
-  const entregado = asistencia?.estadoAbordaje === 'Entregado';
-  const ausente = asistencia?.estadoAbordaje === 'Ausente';
-  const esperando = estado === 'en-curso' && (!asistencia || asistencia?.estadoAbordaje === 'Pendiente');
-
-  const pill =
-    estado === 'sin-iniciar'
-      ? { text: 'Recorrido sin iniciar', color: Colors.mutedText, bg: '#1e293b' }
-      : ausente
-        ? { text: 'Reportado Ausente', color: RutaColors.danger, bg: 'rgba(239, 68, 68, 0.15)' }
-      : entregado
-        ? { text: `Entregado · ${formatHora(asistencia?.horaEntrega)}`, color: '#00d4ff', bg: 'rgba(0, 212, 255, 0.15)' }
-      : abordo
-        ? { text: `A bordo · ${formatHora(asistencia?.horaAbordaje)}`, color: RutaColors.success, bg: 'rgba(34, 197, 94, 0.15)' }
-      : esperando
-        ? { text: 'Esperando el bus', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' }
-      : { text: ESTADO_LABEL[estado], color: Colors.mutedText, bg: '#1e293b' };
-
-  const placa = placaDeRuta(infoRuta?.ruta?.descripcion);
+  const placa = infoRuta?.vehiculo?.placa || placaDeRuta(infoRuta?.ruta?.descripcion);
+  const modelo = infoRuta?.vehiculo?.modelo || 'No registrado';
+  const conductorNombre =
+    infoRuta?.conductorNombre || conductorDeRuta(infoRuta?.ruta?.descripcion) || 'No asignado';
+  const conductorTelefono =
+    infoRuta?.conductorTelefono || telefonoDeRuta(infoRuta?.ruta?.descripcion) || '';
+  const listaHijos = estudiantes.length > 0 ? estudiantes : [estudiante];
 
   return (
     <Animated.View style={[styles.bottomSheet, { height: animatedHeight }]}>
@@ -220,6 +256,91 @@ export default function PanelEstudianteBottomSheet({
         contentContainerStyle={styles.sheetContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Listado de todos los estudiantes a cargo del acudiente (1, 2, 3, 4 o más) */}
+        <View style={styles.hijosSection}>
+          <View style={styles.hijosSectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="people-outline" size={16} color={Colors.primary} />
+              <Text style={styles.hijosSectionTitle}>
+                Estudiantes a cargo ({listaHijos.length})
+              </Text>
+            </View>
+            {listaHijos.length > 1 && (
+              <Text style={styles.hijosSectionHint}>Toca un estudiante para ver su ruta</Text>
+            )}
+          </View>
+
+          <View style={styles.hijosList}>
+            {listaHijos.map(h => {
+              const esActivo = h.idEstudiante === estudiante.idEstudiante;
+              const infoHijo = h.idRuta ? rutasInfo[h.idRuta] : undefined;
+              const estHijo = obtenerEstadoEstudiante(h, infoHijo);
+              const paradaHijo = (infoHijo?.paradas || []).find(p => p.idParada === h.idParada);
+              const nombreHijo = `${h.nombre || ''} ${h.apellido || ''}`.trim();
+              const placaHijo = infoHijo?.vehiculo?.placa || placaDeRuta(infoHijo?.ruta?.descripcion);
+
+              return (
+                <TouchableOpacity
+                  key={h.idEstudiante}
+                  activeOpacity={0.8}
+                  onPress={() => onSelectEstudiante?.(h.idEstudiante)}
+                  style={[
+                    styles.hijoCard,
+                    esActivo && styles.hijoCardActivo,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.hijoAvatarSmall,
+                      esActivo && { borderColor: Colors.primary, backgroundColor: 'rgba(0, 212, 255, 0.15)' },
+                    ]}
+                  >
+                    <Ionicons
+                      name={estHijo.abordo ? 'bus' : estHijo.entregado ? 'checkmark-circle' : 'person-outline'}
+                      size={16}
+                      color={esActivo ? Colors.primary : estHijo.pill.color}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.hijoHeaderRow}>
+                      <Text
+                        style={[
+                          styles.hijoNombre,
+                          esActivo && { color: Colors.primary },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {nombreHijo}
+                      </Text>
+                      <View style={[styles.pillBadge, { backgroundColor: estHijo.pill.bg }]}>
+                        <Text style={[styles.pillBadgeText, { color: estHijo.pill.color }]}>
+                          {estHijo.pill.shortText}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.hijoMeta} numberOfLines={1}>
+                      {h.colegio || 'Sin colegio'}
+                      {h.cursoGrado ? ` · ${h.cursoGrado}` : ''}
+                      {infoHijo?.ruta?.nombreRuta ? ` · ${infoHijo.ruta.nombreRuta}` : ' · Sin ruta'}
+                      {placaHijo ? ` (${placaHijo})` : ''}
+                    </Text>
+                    {paradaHijo?.nombreParada ? (
+                      <Text style={styles.hijoParadaText} numberOfLines={1}>
+                        Parada: {paradaHijo.nombreParada}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  {esActivo && (
+                    <Ionicons name="radio-button-on" size={18} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Banner de alerta inminente si el bus está a menos de 500m */}
         {esperando && infoEta?.esInminente && (
           <View style={styles.alertaInminente}>
@@ -407,15 +528,23 @@ export default function PanelEstudianteBottomSheet({
 
         {/* Información del vehículo y conductor */}
         <View style={styles.vehiculoCard}>
-          <Text style={styles.cardHeaderTitle}>Detalles del vehículo y ruta</Text>
+          <Text style={styles.cardHeaderTitle}>Información básica del bus y conductor</Text>
           <View style={styles.infoGrid}>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Ruta</Text>
-              <Text style={styles.infoValue}>{infoRuta?.ruta?.nombreRuta || 'Sin asignar'}</Text>
+              <Text style={styles.infoLabel}>Conductor</Text>
+              <Text style={styles.infoValue}>{conductorNombre}</Text>
             </View>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Placa</Text>
-              <Text style={styles.infoValue}>{placa || 'Sin placa'}</Text>
+              <Text style={styles.infoLabel}>Placa del bus</Text>
+              <Text style={[styles.infoValue, { color: Colors.primary }]}>{placa || 'Sin placa'}</Text>
+            </View>
+            <View style={styles.infoRowItem}>
+              <Text style={styles.infoLabel}>Modelo del bus</Text>
+              <Text style={styles.infoValue}>{modelo}</Text>
+            </View>
+            <View style={styles.infoRowItem}>
+              <Text style={styles.infoLabel}>Ruta asignada</Text>
+              <Text style={styles.infoValue}>{infoRuta?.ruta?.nombreRuta || 'Sin asignar'}</Text>
             </View>
             <View style={styles.infoRowItem}>
               <Text style={styles.infoLabel}>Estado viaje</Text>
@@ -423,6 +552,33 @@ export default function PanelEstudianteBottomSheet({
                 {ESTADO_LABEL[estado]}
               </Text>
             </View>
+          </View>
+
+          {/* Teléfono del conductor con botón directo para llamar */}
+          <View style={styles.phoneRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <View style={styles.phoneIconBox}>
+                <Ionicons name="call-outline" size={16} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.phoneLabel}>TELÉFONO DEL CONDUCTOR</Text>
+                <Text style={styles.phoneValue}>
+                  {conductorTelefono || 'No registrado'}
+                </Text>
+              </View>
+            </View>
+
+            {conductorTelefono ? (
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() => Linking.openURL(`tel:${conductorTelefono.replace(/\s+/g, '')}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Llamar al conductor ${conductorNombre}`}
+              >
+                <Ionicons name="call" size={14} color={Colors.darker} />
+                <Text style={styles.callButtonText}>Llamar</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       </ScrollView>
@@ -780,5 +936,124 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  hijosSection: {
+    backgroundColor: '#12203a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e2f4f',
+    padding: 12,
+    gap: 10,
+  },
+  hijosSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  hijosSectionTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  hijosSectionHint: {
+    color: Colors.mutedText,
+    fontSize: 11,
+  },
+  hijosList: {
+    gap: 8,
+  },
+  hijoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#0c1729',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e2f4f',
+    padding: 10,
+  },
+  hijoCardActivo: {
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(0, 212, 255, 0.08)',
+  },
+  hijoAvatarSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#12203a',
+    borderWidth: 1,
+    borderColor: '#1e2f4f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hijoHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  hijoNombre: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+  },
+  hijoMeta: {
+    color: Colors.mutedText,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  hijoParadaText: {
+    color: Colors.primary,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  phoneRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1e2f4f',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  phoneIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0, 212, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneLabel: {
+    color: Colors.mutedText,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  phoneValue: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  callButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  callButtonText: {
+    color: Colors.darker,
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

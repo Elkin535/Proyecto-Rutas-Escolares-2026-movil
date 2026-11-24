@@ -958,7 +958,7 @@ export default function ConductorScreen() {
                           disabled={ocupado}
                         >
                           <Ionicons name="checkmark" size={16} color={RutaColors.success} />
-                          <Text style={[styles.actionText, { color: RutaColors.success }]}>Abordó</Text>
+                          <Text style={[styles.actionText, { color: RutaColors.success }]}>Abordado</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.actionButton, { borderColor: RutaColors.danger }]}
@@ -967,6 +967,25 @@ export default function ConductorScreen() {
                         >
                           <Ionicons name="close" size={16} color={RutaColors.danger} />
                           <Text style={[styles.actionText, { color: RutaColors.danger }]}>Ausente</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {estado === 'en-curso' && a && a.estadoAbordaje === 'Abordo' && (
+                      <View style={styles.actionsRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              borderColor: RutaColors.warning,
+                              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                            },
+                          ]}
+                          onPress={() => marcar(a.idAsistencia, 'Entregado')}
+                          disabled={ocupado}
+                        >
+                          <Ionicons name="school-outline" size={16} color={RutaColors.warning} />
+                          <Text style={[styles.actionText, { color: RutaColors.warning }]}>Entregado</Text>
                         </TouchableOpacity>
                       </View>
                     )}
