@@ -6,6 +6,7 @@ export const RutaColors = {
   card: '#12203a',
   cardBorder: '#1e2f4f',
   success: '#22c55e',
+  warning: '#f59e0b',
   danger: '#ef4444',
   muted: '#334155',
 };
