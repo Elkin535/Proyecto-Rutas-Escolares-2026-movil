@@ -273,7 +273,7 @@ npx eas-cli@latest build --profile preview --platform android   # APK que se ins
 | Rol                | Integrante             |
 | ------------------ | -----------------------|
 | Scrum Master       | Karol Caicedo          |
-| Frontend Developer | Luisa                  |
+| Frontend Developer | Luisa Gonzalez         |
 | Frontend Developer | Karol Caicedo          |
 | Backend Developer  | Dairon Valencia        |
 | Backend Developer  | Elkin  Andres Chalarka |
