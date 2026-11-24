@@ -245,7 +245,19 @@ Para probarlas, genera la app instalable con [EAS](https://docs.expo.dev/build/i
 
 ```bash
 npx eas-cli@latest login
-npx eas-cli@latest build --profile preview --platform android   # APK que se instala y funciona solo
+
+# Android (APK directo para instalar):
+npx eas-cli@latest build --profile preview --platform android
+
+# iOS (Dispositivos físicos registrados / Ad-Hoc):
+npx eas-cli@latest device:create                                # 1. Registrar UDID del iPhone
+npx eas-cli@latest build --profile preview --platform ios       # 2. Compilar IPA para instalar desde Safari
+
+# iOS (Simulador en Mac - no requiere cuenta de pago):
+npx eas-cli@latest build --profile preview-simulator --platform ios
+
+# iOS (TestFlight / App Store - Oficial para distribución):
+npx eas-cli@latest build --profile production --platform ios
 ```
 
 ---
