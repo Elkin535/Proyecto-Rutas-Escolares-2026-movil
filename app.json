@@ -13,8 +13,16 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "location",
+          "audio",
+          "location",
           "audio"
-        ]
+        ],
+        "NSCameraUsageDescription": "SchoolTrack usa la cámara para tomar la asistencia por reconocimiento facial y detectar somnolencia del conductor.",
+        "NSMicrophoneUsageDescription": "SchoolTrack usa el micrófono para reproducir alertas sonoras y notas de voz durante el recorrido.",
+        "NSPhotoLibraryUsageDescription": "SchoolTrack usa tus fotos para registrar el rostro de los estudiantes.",
+        "NSLocationWhenInUseUsageDescription": "SchoolTrack usa tu ubicación para mostrar el bus en tiempo real a los acudientes.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SchoolTrack sigue compartiendo la ubicación del bus aunque bloquees el celular durante el recorrido.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -90,7 +98,8 @@
           "android": {
             "minSdkVersion": 26,
             "enableProguardInReleaseBuilds": false,
-            "extraProguardRules": "-keep class androidx.work.** { *; }\n-keep class * extends androidx.room.RoomDatabase { *; }\n-keep class androidx.room.** { *; }\n-dontwarn androidx.work.**"
+            "extraProguardRules": "-keep class androidx.work.** { *; }\n-keep class * extends androidx.room.RoomDatabase { *; }\n-keep class androidx.room.** { *; }\n-dontwarn androidx.work.**",
+            "enableMinifyInReleaseBuilds": false
           }
         }
       ],
