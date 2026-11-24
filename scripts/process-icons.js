@@ -2,73 +2,119 @@ const fs = require('fs');
 const path = require('path');
 const Jimp = require('jimp-compact');
 
-const userUploadedPath = 'C:/Users/KAROL CAICEDO/.gemini/antigravity/brain/c2e34348-455f-483e-b0ab-89640a87b3d7/.user_uploaded/media_1794799589813_ac1da290.jpg';
-const assetsDir = path.resolve(__dirname, '../assets/images');
+const userUploadedPath =
+  'C:/Users/LUISA GONZALEZ/.gemini/antigravity/brain/b7f059e8-36ae-4eb2-ae37-152b26717074/.user_uploaded/media_1795490064001_6a8d9a3f.png';
+const assetsDir = path.resolve(process.cwd(), 'assets/images');
 
 async function processIcons() {
-  console.log('Loading new source image...');
+  console.log('Loading new SchoolTrack source image...');
   const img = await Jimp.read(userUploadedPath);
   const w = img.bitmap.width;
   const h = img.bitmap.height;
-  const cx = w / 2;
-  const cy = h / 2;
 
-  // Make corners transparent with an anti-aliased circle mask
-  const transparentImg = img.clone();
-  const maxR = 504;
-  const feather = 2.5;
-
-  transparentImg.scan(0, 0, w, h, function (x, y, idx) {
-    const dx = x - cx;
-    const dy = y - cy;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > maxR + feather) {
-      this.bitmap.data[idx + 3] = 0; // Transparent
-    } else if (dist > maxR - feather) {
-      const factor = (maxR + feather - dist) / (2 * feather);
-      this.bitmap.data[idx + 3] = Math.round(this.bitmap.data[idx + 3] * factor);
+  // Detect non-transparent bounding box of the icon artwork
+  let minX = w;
+  let minY = h;
+  let maxX = 0;
+  let maxY = 0;
+  img.scan(0, 0, w, h, function (x, y, idx) {
+    const a = this.bitmap.data[idx + 3];
+    if (a > 10) {
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
     }
   });
 
-  // 1. Save assets/images/logo.png (for in-app UI)
+  const cropW = maxX - minX + 1;
+  const cropH = maxY - minY + 1;
+  const cropped = img.clone().crop(minX, minY, cropW, cropH);
+
+  // Place cropped artwork centered on a square canvas so aspect ratio is preserved
+  const squareSide = Math.max(cropW, cropH);
+  const squareArt = new Jimp(squareSide, squareSide, 0x00000000);
+  squareArt.composite(
+    cropped,
+    Math.round((squareSide - cropW) / 2),
+    Math.round((squareSide - cropH) / 2)
+  );
+
+  // 1. Standard 1024x1024 icon (980x980 artwork centered on 1024x1024 transparent canvas)
+  const fullCanvas = new Jimp(1024, 1024, 0x00000000);
+  const mainTargetSize = 980;
+  const mainScaled = squareArt.clone().resize(mainTargetSize, mainTargetSize);
+  const mainOffset = Math.round((1024 - mainTargetSize) / 2);
+  fullCanvas.composite(mainScaled, mainOffset, mainOffset);
+
+  // Save assets/images/logo.png (for in-app UI: index, login, drawer menu)
   const logoPath = path.join(assetsDir, 'logo.png');
-  await transparentImg.writeAsync(logoPath);
+  await fullCanvas.writeAsync(logoPath);
   console.log('Created:', logoPath);
 
-  // 2. Save assets/images/icon.png (standard app icon)
+  // 2. Save assets/images/icon.png (primary app icon for Expo / iOS / Android fallback)
   const iconPath = path.join(assetsDir, 'icon.png');
-  await transparentImg.writeAsync(iconPath);
+  await fullCanvas.writeAsync(iconPath);
   console.log('Created:', iconPath);
 
-  // 3. Android adaptive icon foreground (1024x1024 canvas with 700x700 scaled icon inside safe zone)
+  // 3. Save assets/images/splash-icon.png (splash screen icon)
+  const splashPath = path.join(assetsDir, 'splash-icon.png');
+  await fullCanvas.writeAsync(splashPath);
+  console.log('Created:', splashPath);
+
+  // 4. Android adaptive icon foreground (1024x1024 canvas with 690x690 icon inside 66% safe zone)
   const fg = new Jimp(1024, 1024, 0x00000000);
-  const targetSize = 700;
-  const scaledLogo = transparentImg.clone().resize(targetSize, targetSize);
-  const offset = Math.round((1024 - targetSize) / 2); // 162
-  fg.composite(scaledLogo, offset, offset);
+  const fgTargetSize = 690;
+  const fgScaled = squareArt.clone().resize(fgTargetSize, fgTargetSize);
+  const fgOffset = Math.round((1024 - fgTargetSize) / 2);
+  fg.composite(fgScaled, fgOffset, fgOffset);
   const fgPath = path.join(assetsDir, 'android-icon-foreground.png');
   await fg.writeAsync(fgPath);
   console.log('Created:', fgPath);
 
-  // 4. Android adaptive icon background (#040c18)
+  // 5. Android adaptive icon background (#040c18)
   const bg = new Jimp(1024, 1024, 0x040c18ff);
   const bgPath = path.join(assetsDir, 'android-icon-background.png');
   await bg.writeAsync(bgPath);
   console.log('Created:', bgPath);
 
-  // 5. Save splash-icon.png
-  const splashPath = path.join(assetsDir, 'splash-icon.png');
-  await transparentImg.writeAsync(splashPath);
-  console.log('Created:', splashPath);
+  // 6. Android adaptive monochrome icon (1024x1024 white silhouette of bus + pin + route + speed lines)
+  const mono = fg.clone();
+  mono.scan(0, 0, 1024, 1024, function (x, y, idx) {
+    const r = this.bitmap.data[idx];
+    const g = this.bitmap.data[idx + 1];
+    const b = this.bitmap.data[idx + 2];
+    const a = this.bitmap.data[idx + 3];
 
-  // 6. Save favicon.png
-  const favicon = transparentImg.clone().resize(48, 48);
+    if (a < 20) {
+      this.bitmap.data[idx + 3] = 0;
+      return;
+    }
+
+    // White bus & yellow pin/arc/speed-lines have high R & G compared to the blue background
+    const warmStrength = Math.max(0, Math.min(255, Math.round((r + g) / 2 - b * 0.45)));
+    if (warmStrength > 55) {
+      const alphaFactor = Math.min(1, (warmStrength - 55) / 85);
+      this.bitmap.data[idx] = 255;
+      this.bitmap.data[idx + 1] = 255;
+      this.bitmap.data[idx + 2] = 255;
+      this.bitmap.data[idx + 3] = Math.round(a * alphaFactor);
+    } else {
+      this.bitmap.data[idx + 3] = 0;
+    }
+  });
+  const monoPath = path.join(assetsDir, 'android-icon-monochrome.png');
+  await mono.writeAsync(monoPath);
+  console.log('Created:', monoPath);
+
+  // 7. Save assets/images/favicon.png (48x48 for web)
+  const favicon = fullCanvas.clone().resize(48, 48);
   const faviconPath = path.join(assetsDir, 'favicon.png');
   await favicon.writeAsync(faviconPath);
   console.log('Created:', faviconPath);
 
-  // 7. Update Android native mipmaps if android/ exists
-  const resDir = path.resolve(__dirname, '../android/app/src/main/res');
+  // 8. Update Android native mipmaps if android/ exists
+  const resDir = path.resolve(process.cwd(), 'android/app/src/main/res');
   if (fs.existsSync(resDir)) {
     const densities = [
       { name: 'mipmap-mdpi', size: 48 },
@@ -81,12 +127,10 @@ async function processIcons() {
     for (const d of densities) {
       const folder = path.join(resDir, d.name);
       if (fs.existsSync(folder)) {
-        // ic_launcher.png (legacy launcher icon)
-        const legacyIcon = transparentImg.clone().resize(d.size, d.size);
+        const legacyIcon = fullCanvas.clone().resize(d.size, d.size);
         await legacyIcon.writeAsync(path.join(folder, 'ic_launcher.png'));
         await legacyIcon.writeAsync(path.join(folder, 'ic_launcher_round.png'));
 
-        // Adaptive icon layers (108x108 ratio)
         const adaptiveCanvasSize = Math.round((d.size * 108) / 72);
         const adaptiveFg = fg.clone().resize(adaptiveCanvasSize, adaptiveCanvasSize);
         await adaptiveFg.writeAsync(path.join(folder, 'ic_launcher_foreground.png'));
@@ -98,10 +142,10 @@ async function processIcons() {
     }
   }
 
-  console.log('Done generating all new logo and icon assets!');
+  console.log('Done generating all new SchoolTrack logo and icon assets!');
 }
 
-processIcons().catch((err) => {
+processIcons().catch(err => {
   console.error('Error:', err);
   process.exit(1);
 });
