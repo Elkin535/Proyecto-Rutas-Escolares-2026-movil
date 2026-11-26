@@ -12,6 +12,7 @@ import MonitorSomnolencia from '../../components/MonitorSomnolencia';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
 import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchApi, getJson, getStoredAuthData, leerMensajeError } from '../../services/api';
 import { ModoGps, detenerGps, escucharGps, iniciarGps } from '../../services/gpsTask';
 import { registrarPush } from '../../services/push';
@@ -75,6 +76,7 @@ const navegarA = (lat: number, lng: number) =>
 
 export default function ConductorScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('ruta');
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
@@ -534,7 +536,7 @@ export default function ConductorScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}>
         <Text style={[styles.headerKicker, { color: colors.primary }]}>CENTRO DE CONTROL</Text>
         <View style={styles.headerRow}>
           <Text style={[styles.headerTitle, { color: colors.darkText }]}>
@@ -546,7 +548,7 @@ export default function ConductorScreen() {
             </Text>
           )}
         </View>
-        <View style={styles.headerMenu}>
+        <View style={[styles.headerMenu, { top: Math.max(insets.top + 8, 44) }]}>
           <MenuUsuario usuario={usuario} rol="Conductor" />
         </View>
       </View>

@@ -21,6 +21,7 @@ import PanelEstudianteBottomSheet, {
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
 import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_URL, getJson, getStoredAuthData, safeStorage } from '../../services/api';
 import { registrarPush } from '../../services/push';
 import {
@@ -46,6 +47,7 @@ const HUB_URL = `${API_URL.replace(/\/api$/, '')}/trackingHub`;
 
 export default function AcudienteScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const mapaRef = useRef<MapaRutaRef>(null);
   const [tab, setTab] = useState('inicio');
   const [cargando, setCargando] = useState(true);
@@ -331,12 +333,12 @@ export default function AcudienteScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Cabecera superior común */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}>
         <Text style={[styles.headerKicker, { color: colors.primary }]}>CENTRO DE CONTROL</Text>
         <Text style={[styles.headerTitle, { color: colors.darkText }]}>
           {tab === 'inicio' ? `Hola, ${usuario?.nombre || 'acudiente'}` : 'MI PERFIL'}
         </Text>
-        <View style={styles.headerMenu}>
+        <View style={[styles.headerMenu, { top: Math.max(insets.top + 8, 44) }]}>
           <MenuUsuario usuario={usuario} rol="Acudiente" />
         </View>
       </View>

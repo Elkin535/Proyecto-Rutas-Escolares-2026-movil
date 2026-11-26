@@ -15,11 +15,13 @@ import {
 import { alerta } from '../components/Dialogo';
 import { Colors } from '../constants/Colors';
 import { styles } from '../styles/forgot-password.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Step = 'email' | 'code' | 'newPassword';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Estados del flujo
   const [step, setStep] = useState<Step>('email');
@@ -199,7 +201,13 @@ export default function ForgotPasswordScreen() {
     // Android es edge-to-edge: sin behavior el formulario queda tapado por el teclado
     <KeyboardAvoidingView style={styles.container} behavior="padding">
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: Math.max(insets.top + 16, 40),
+            paddingBottom: Math.max(insets.bottom + 16, 30),
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

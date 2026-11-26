@@ -291,8 +291,9 @@ export const styles = StyleSheet.create({
   // Barra inferior
   bottomNav: {
     flexDirection: 'row',
-    margin: 16,
+    marginHorizontal: 16,
     marginTop: 0,
+    marginBottom: 16,
     padding: 8,
     borderRadius: 16,
     backgroundColor: RutaColors.card,
