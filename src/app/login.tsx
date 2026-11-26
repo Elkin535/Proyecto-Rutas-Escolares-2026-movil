@@ -17,6 +17,7 @@ import {
 import { Colors } from '../constants/Colors';
 import { fetchApi, getRoleRoute, saveAuthData } from '../services/api';
 import { styles } from '../styles/login.styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ErrorField = 'email' | 'password' | 'both' | null;
 
@@ -28,6 +29,7 @@ const NO_AUTOFILL = Platform.OS === 'android' ? 'no' : 'auto';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -171,7 +173,13 @@ export default function LoginScreen() {
     // así que el behavior hace falta en ambas plataformas (guía de teclado de Expo)
     <KeyboardAvoidingView style={styles.container} behavior="padding">
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: Math.max(insets.top + 20, 50),
+            paddingBottom: Math.max(insets.bottom + 20, 30),
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

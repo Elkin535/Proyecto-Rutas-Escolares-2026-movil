@@ -22,6 +22,7 @@ import MenuUsuario from '../../components/MenuUsuario';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
 import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_URL, fetchApi, getJson, getStoredAuthData } from '../../services/api';
 import { registrarPush } from '../../services/push';
 import { registrarRostro, tomarFotoBase64 } from '../../services/rostros';
@@ -81,6 +82,7 @@ const fechaIso = (v?: string) => (v ? new Date(`${v}T00:00:00`).toISOString() : 
 
 export default function AdminScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [vista, setVista] = useState('inicio');
   const [tab, setTab] = useState<Tab>('resumen');
   const [search, setSearch] = useState('');
@@ -636,7 +638,7 @@ export default function AdminScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}>
         <View>
           <Text style={[styles.headerSubtitle, { color: colors.primary }]}>CENTRO DE CONTROL</Text>
           <Text style={[styles.headerTitle, { color: colors.darkText }]}>
