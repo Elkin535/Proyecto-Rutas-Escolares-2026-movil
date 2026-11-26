@@ -20,6 +20,7 @@ import PanelEstudianteBottomSheet, {
 } from '../../components/PanelEstudianteBottomSheet';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
+import { useTheme } from '../../context/ThemeContext';
 import { API_URL, getJson, getStoredAuthData, safeStorage } from '../../services/api';
 import { registrarPush } from '../../services/push';
 import {
@@ -44,6 +45,7 @@ const REFRESCO_MS = 30000;
 const HUB_URL = `${API_URL.replace(/\/api$/, '')}/trackingHub`;
 
 export default function AcudienteScreen() {
+  const { colors } = useTheme();
   const mapaRef = useRef<MapaRutaRef>(null);
   const [tab, setTab] = useState('inicio');
   const [cargando, setCargando] = useState(true);
@@ -75,7 +77,7 @@ export default function AcudienteScreen() {
 
     let usuarios: any[] = Array.isArray(usuariosApi) ? usuariosApi : [];
     if (usuarios.length > 0) {
-      await safeStorage.setItem('usuarios_cache', JSON.stringify(usuarios)).catch(() => {});
+      await safeStorage.setItem('usuarios_cache', JSON.stringify(usuarios)).catch(() => { });
     } else {
       const cached = await safeStorage.getItem('usuarios_cache').catch(() => null);
       if (cached) {
@@ -101,8 +103,8 @@ export default function AcudienteScreen() {
     const misHijos =
       misAcudientesIds.size > 0
         ? listaEstudiantes.filter((e: any) =>
-            misAcudientesIds.has(Number(e.idAcudiente ?? e.id_acudiente))
-          )
+          misAcudientesIds.has(Number(e.idAcudiente ?? e.id_acudiente))
+        )
         : [];
 
     const norm = (s?: string) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -145,17 +147,17 @@ export default function AcudienteScreen() {
             : null) ||
           (nombreDesc
             ? conductoresOrdenados.find((c: any) => {
-                const uCond = usuarios.find((x: any) => x.idUsuario === c.idUsuario);
-                return uCond && norm(`${uCond.nombre || ''} ${uCond.apellido || ''}`) === norm(nombreDesc);
-              })
+              const uCond = usuarios.find((x: any) => x.idUsuario === c.idUsuario);
+              return uCond && norm(`${uCond.nombre || ''} ${uCond.apellido || ''}`) === norm(nombreDesc);
+            })
             : null);
 
         let usuarioConductor =
           (condObj ? usuarios.find((x: any) => x.idUsuario === condObj.idUsuario) : null) ||
           (nombreDesc
             ? usuarios.find(
-                (x: any) => norm(`${x.nombre || ''} ${x.apellido || ''}`) === norm(nombreDesc)
-              )
+              (x: any) => norm(`${x.nombre || ''} ${x.apellido || ''}`) === norm(nombreDesc)
+            )
             : null);
 
         if (!usuarioConductor && condObj?.idUsuario) {
@@ -253,9 +255,9 @@ export default function AcudienteScreen() {
     estado !== 'en-curso'
       ? null
       : (infoActiva?.viaje?.idViaje && buses[infoActiva.viaje.idViaje]) ||
-        (infoActiva?.viaje?.latitudActual != null
-          ? { latitude: Number(infoActiva.viaje.latitudActual), longitude: Number(infoActiva.viaje.longitudActual) }
-          : null);
+      (infoActiva?.viaje?.latitudActual != null
+        ? { latitude: Number(infoActiva.viaje.latitudActual), longitude: Number(infoActiva.viaje.longitudActual) }
+        : null);
 
   const miParadaIndex =
     infoActiva?.paradas && estudianteActivo
@@ -327,11 +329,11 @@ export default function AcudienteScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Cabecera superior común */}
       <View style={styles.header}>
-        <Text style={styles.headerKicker}>centro de control</Text>
-        <Text style={styles.headerTitle}>
+        <Text style={[styles.headerKicker, { color: colors.primary }]}>CENTRO DE CONTROL</Text>
+        <Text style={[styles.headerTitle, { color: colors.darkText }]}>
           {tab === 'inicio' ? `Hola, ${usuario?.nombre || 'acudiente'}` : 'MI PERFIL'}
         </Text>
         <View style={styles.headerMenu}>

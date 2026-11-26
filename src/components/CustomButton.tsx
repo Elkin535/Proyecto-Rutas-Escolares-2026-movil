@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from 'react-native';
-import { Colors } from '../constants/Colors';
+
+import { useTheme } from '../context/ThemeContext';
 
 interface CustomButtonProps {
   title: string;
@@ -29,13 +30,19 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const { colors, isDark } = useTheme();
+
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        variant === 'primary' && styles.primaryButton,
-        variant === 'secondary' && styles.secondaryButton,
-        variant === 'outline' && styles.outlineButton,
+        variant === 'primary' && { backgroundColor: colors.primary },
+        variant === 'secondary' && { backgroundColor: colors.dark },
+        variant === 'outline' && {
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
         (disabled || loading) && styles.disabledButton,
         style,
       ]}
@@ -44,14 +51,14 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? Colors.dark : Colors.cardBackground} />
+        <ActivityIndicator color={variant === 'primary' ? (isDark ? colors.dark : '#ffffff') : colors.cardBackground} />
       ) : (
         <Text
           style={[
             styles.text,
-            variant === 'primary' && styles.primaryText,
-            variant === 'secondary' && styles.secondaryText,
-            variant === 'outline' && styles.outlineText,
+            variant === 'primary' && { color: isDark ? colors.dark : '#ffffff' },
+            variant === 'secondary' && { color: '#FFFFFF' },
+            variant === 'outline' && { color: colors.darkText },
             textStyle,
           ]}
         >
@@ -69,32 +76,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButton: {
-    backgroundColor: Colors.primary,
-  },
-  secondaryButton: {
-    backgroundColor: Colors.dark,
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
   disabledButton: {
     opacity: 0.6,
   },
   text: {
     fontSize: 15,
     fontWeight: '700',
-  },
-  primaryText: {
-    color: Colors.dark,
-  },
-  secondaryText: {
-    color: '#FFFFFF',
-  },
-  outlineText: {
-    color: Colors.darkText,
   },
 });
 

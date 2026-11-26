@@ -1,10 +1,10 @@
 import { Platform, StyleSheet } from 'react-native';
-import { Colors } from '../constants/Colors';
+import { DarkColors } from '../constants/Colors';
 
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: DarkColors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -37,24 +37,24 @@ export const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: Colors.primary,
+    color: DarkColors.primary,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.mutedText,
+    color: DarkColors.mutedText,
     marginTop: 3,
   },
   card: {
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: DarkColors.cardBackground,
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: DarkColors.border,
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.mutedText,
+    color: DarkColors.mutedText,
     marginBottom: 6,
     textTransform: 'uppercase',
   },
@@ -62,7 +62,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: DarkColors.border,
     borderRadius: 12,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
     marginBottom: 16,
@@ -71,7 +71,7 @@ export const styles = StyleSheet.create({
   // Solo cambia color: cambiar sombra/elevation al enfocar hace que Android
   // vuelva a dibujar el contenedor del campo mientras abre el teclado
   inputWrapperFocused: {
-    borderColor: Colors.primary,
+    borderColor: DarkColors.primary,
     backgroundColor: 'rgba(15, 23, 42, 0.85)',
   },
   fieldIcon: {
@@ -82,7 +82,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 14,
-    color: Colors.darkText,
+    color: DarkColors.darkText,
     backgroundColor: 'transparent',
     ...(Platform.OS === 'web'
       ? ({
@@ -129,7 +129,7 @@ export const styles = StyleSheet.create({
   },
   rememberLabel: {
     fontSize: 13,
-    color: Colors.darkText,
+    color: DarkColors.darkText,
     fontWeight: '500',
   },
   infoButton: {
@@ -176,11 +176,11 @@ export const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 12,
-    color: Colors.link,
+    color: DarkColors.link,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: DarkColors.primary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -195,7 +195,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   inputWrapperError: {
-    borderColor: Colors.error,
+    borderColor: DarkColors.error,
     backgroundColor: 'rgba(248, 113, 113, 0.06)',
   },
   errorBanner: {
@@ -206,7 +206,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(248, 113, 113, 0.4)',
     borderLeftWidth: 4,
-    borderLeftColor: Colors.error,
+    borderLeftColor: DarkColors.error,
     borderRadius: 14,
     padding: 12,
     marginBottom: 18,
@@ -224,12 +224,12 @@ export const styles = StyleSheet.create({
     gap: 2,
   },
   errorTitle: {
-    color: Colors.error,
+    color: DarkColors.error,
     fontSize: 14,
     fontWeight: '700',
   },
   errorMessage: {
-    color: Colors.darkText,
+    color: DarkColors.darkText,
     fontSize: 13,
     lineHeight: 18,
     opacity: 0.85,
@@ -240,7 +240,7 @@ export const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 11,
-    color: Colors.placeholder,
+    color: DarkColors.placeholder,
     textAlign: 'center',
   },
 });

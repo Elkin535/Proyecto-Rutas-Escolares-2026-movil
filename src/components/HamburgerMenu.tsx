@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -14,7 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
 import { Colors } from '../constants/Colors';
+import { useTheme } from '../context/ThemeContext';
 
 export interface HamburgerMenuProps {
   userName?: string;
@@ -33,11 +35,12 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
   userRole = 'Administrador',
   onLogout,
 }) => {
+  const { colors, isDark } = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
+  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const slideAnim = useMemo(() => new Animated.Value(DRAWER_WIDTH), []);
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -87,15 +90,21 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
     <>
       {/* Botón de Hamburguesa en la cabecera */}
       <TouchableOpacity
-        style={styles.hamburgerButton}
+        style={[
+          styles.hamburgerButton,
+          {
+            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.75)' : '#ffffff',
+            borderColor: isDark ? 'rgba(0, 212, 255, 0.3)' : colors.cardBorder,
+          },
+        ]}
         onPress={openMenu}
         activeOpacity={0.75}
         accessibilityLabel="Abrir menú de opciones"
       >
         <View style={styles.hamburgerLinesContainer}>
-          <View style={styles.hamburgerLine} />
-          <View style={[styles.hamburgerLine, styles.hamburgerLineMiddle]} />
-          <View style={styles.hamburgerLine} />
+          <View style={[styles.hamburgerLine, { backgroundColor: colors.primary }]} />
+          <View style={[styles.hamburgerLine, styles.hamburgerLineMiddle, { backgroundColor: colors.primary }]} />
+          <View style={[styles.hamburgerLine, { backgroundColor: colors.primary }]} />
         </View>
       </TouchableOpacity>
 
@@ -119,11 +128,13 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
               {
                 width: DRAWER_WIDTH,
                 transform: [{ translateX: slideAnim }],
+                backgroundColor: colors.drawerBg,
+                borderLeftColor: colors.border,
               },
             ]}
           >
             {/* Cabecera del Drawer */}
-            <View style={styles.drawerHeader}>
+            <View style={[styles.drawerHeader, { borderBottomColor: colors.border }]}>
               <View style={styles.brandRow}>
                 <Image
                   source={require('../../assets/images/logo.png')}
@@ -131,18 +142,21 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                   resizeMode="contain"
                 />
                 <View>
-                  <Text style={styles.brandTitle}>SchoolTrack</Text>
-                  <Text style={styles.brandSubtitle}>Rutas Escolares 2026</Text>
+                  <Text style={[styles.brandTitle, { color: colors.primary }]}>SchoolTrack</Text>
+                  <Text style={[styles.brandSubtitle, { color: colors.mutedText }]}>Rutas Escolares 2026</Text>
                 </View>
               </View>
 
               <TouchableOpacity
-                style={styles.closeButton}
+                style={[
+                  styles.closeButton,
+                  { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)' },
+                ]}
                 onPress={() => closeMenu()}
                 activeOpacity={0.7}
                 accessibilityLabel="Cerrar menú"
               >
-                <Ionicons name="close-outline" size={22} color={Colors.mutedText} />
+                <Ionicons name="close-outline" size={22} color={colors.mutedText} />
               </TouchableOpacity>
             </View>
 
@@ -151,23 +165,31 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
               contentContainerStyle={styles.drawerScroll}
             >
               {/* Tarjeta de Perfil de Usuario */}
-              <View style={styles.profileCard}>
-                <View style={styles.avatarCircle}>
-                  <Ionicons name="shield-checkmark" size={24} color={Colors.primary} />
+              <View
+                style={[
+                  styles.profileCard,
+                  {
+                    backgroundColor: colors.drawerCard,
+                    borderColor: isDark ? 'rgba(0, 212, 255, 0.25)' : colors.cardBorder,
+                  },
+                ]}
+              >
+                <View style={[styles.avatarCircle, { borderColor: colors.primary }]}>
+                  <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
                 </View>
 
                 <View style={styles.profileInfo}>
-                  <Text style={styles.userName} numberOfLines={1}>
+                  <Text style={[styles.userName, { color: colors.darkText }]} numberOfLines={1}>
                     {userName}
                   </Text>
-                  <Text style={styles.userEmail} numberOfLines={1}>
+                  <Text style={[styles.userEmail, { color: colors.mutedText }]} numberOfLines={1}>
                     {userEmail}
                   </Text>
                 </View>
 
                 <View style={styles.badgeRow}>
-                  <View style={styles.roleBadge}>
-                    <Text style={styles.roleBadgeText}>
+                  <View style={[styles.roleBadge, { borderColor: colors.primary }]}>
+                    <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
                       {userRole.toUpperCase()}
                     </Text>
                   </View>
@@ -179,11 +201,11 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
               </View>
 
               {/* Separador */}
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
               {/* Sección de Cierre de Sesión */}
               <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>SESIÓN</Text>
+                <Text style={[styles.sectionTitle, { color: colors.placeholder }]}>SESIÓN</Text>
                 <TouchableOpacity
                   style={styles.logoutCardButton}
                   onPress={() => setShowConfirmLogout(true)}
@@ -191,11 +213,11 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                   accessibilityLabel="Cerrar sesión"
                 >
                   <View style={styles.logoutIconCircle}>
-                    <Ionicons name="log-out-outline" size={20} color={Colors.error} />
+                    <Ionicons name="log-out-outline" size={20} color={colors.error} />
                   </View>
                   <View style={styles.logoutTextContainer}>
-                    <Text style={styles.logoutTitle}>Cerrar sesión</Text>
-                    <Text style={styles.logoutSubtitle}>
+                    <Text style={[styles.logoutTitle, { color: colors.error }]}>Cerrar sesión</Text>
+                    <Text style={[styles.logoutSubtitle, { color: colors.mutedText }]}>
                       Salir de la cuenta y volver al login
                     </Text>
                   </View>
@@ -209,9 +231,9 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
             </ScrollView>
 
             {/* Pie del Drawer */}
-            <View style={styles.drawerFooter}>
-              <Text style={styles.footerAppText}>SchoolTrack Móvil · v1.0.0</Text>
-              <Text style={styles.footerCompanyText}>Transporte Escolar Confiable</Text>
+            <View style={[styles.drawerFooter, { borderTopColor: colors.border }]}>
+              <Text style={[styles.footerAppText, { color: colors.mutedText }]}>SchoolTrack Móvil · v1.0.0</Text>
+              <Text style={[styles.footerCompanyText, { color: colors.placeholder }]}>Transporte Escolar Confiable</Text>
             </View>
           </Animated.View>
         </View>

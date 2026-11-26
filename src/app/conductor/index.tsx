@@ -11,6 +11,7 @@ import MenuUsuario from '../../components/MenuUsuario';
 import MonitorSomnolencia from '../../components/MonitorSomnolencia';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
+import { useTheme } from '../../context/ThemeContext';
 import { fetchApi, getJson, getStoredAuthData, leerMensajeError } from '../../services/api';
 import { ModoGps, detenerGps, escucharGps, iniciarGps } from '../../services/gpsTask';
 import { registrarPush } from '../../services/push';
@@ -73,6 +74,7 @@ const navegarA = (lat: number, lng: number) =>
   );
 
 export default function ConductorScreen() {
+  const { colors, isDark } = useTheme();
   const [tab, setTab] = useState('ruta');
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
@@ -531,15 +533,15 @@ export default function ConductorScreen() {
         : `${abordados} abordados / ${ausentes} ausentes · Sin pendientes`;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.headerKicker}>centro de control</Text>
+        <Text style={[styles.headerKicker, { color: colors.primary }]}>CENTRO DE CONTROL</Text>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { color: colors.darkText }]}>
             {tab === 'ruta' ? 'MI RUTA' : tab === 'historial' ? 'HISTORIAL' : 'MI PERFIL'}
           </Text>
           {tab === 'ruta' && (
-            <Text style={[styles.headerEstado, estado === 'finalizado' && { color: RutaColors.success }]}>
+            <Text style={[styles.headerEstado, { color: colors.mutedText }, estado === 'finalizado' && { color: RutaColors.success }]}>
               · {ESTADO_LABEL[estado]}
             </Text>
           )}
@@ -618,28 +620,28 @@ export default function ConductorScreen() {
               const colorBadge = enProgreso ? Colors.primary : RutaColors.success;
 
               return (
-                <View key={`hist-${idViaje}-${idx}`} style={styles.historyCard}>
+                <View key={`hist-${idViaje}-${idx}`} style={[styles.historyCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                   <View style={styles.historyHeader}>
                     <View style={styles.historyIdBadge}>
-                      <Ionicons name="bus-outline" size={18} color={Colors.primary} />
-                      <Text style={styles.historyIdText}>Viaje #{idViaje}</Text>
+                      <Ionicons name="bus-outline" size={18} color={colors.primary} />
+                      <Text style={[styles.historyIdText, { color: colors.darkText }]}>Viaje #{idViaje}</Text>
                     </View>
                     <View style={[styles.historyStatusBadge, { backgroundColor: `${colorBadge}22` }]}>
                       <Text style={[styles.historyStatusText, { color: colorBadge }]}>{estadoViaje}</Text>
                     </View>
                   </View>
 
-                  <View style={styles.historyTimeContainer}>
+                  <View style={[styles.historyTimeContainer, { backgroundColor: isDark ? colors.darker : colors.background }]}>
                     <View style={styles.historyTimeCol}>
-                      <Text style={styles.historyTimeLabel}>Hora Inicio</Text>
-                      <Text style={styles.historyTimeValue}>{formatHoraHistorial(horaInicio)}</Text>
+                      <Text style={[styles.historyTimeLabel, { color: colors.mutedText }]}>Hora Inicio</Text>
+                      <Text style={[styles.historyTimeValue, { color: colors.darkText }]}>{formatHoraHistorial(horaInicio)}</Text>
                     </View>
                     <View style={styles.historyArrow}>
-                      <Ionicons name="arrow-forward" size={16} color={Colors.mutedText} />
+                      <Ionicons name="arrow-forward" size={16} color={colors.mutedText} />
                     </View>
                     <View style={styles.historyTimeCol}>
-                      <Text style={styles.historyTimeLabel}>Hora Fin</Text>
-                      <Text style={[styles.historyTimeValue, enProgreso && { color: Colors.primary }]}>
+                      <Text style={[styles.historyTimeLabel, { color: colors.mutedText }]}>Hora Fin</Text>
+                      <Text style={[styles.historyTimeValue, { color: colors.darkText }, enProgreso && { color: colors.primary }]}>
                         {enProgreso ? 'En curso…' : formatHoraHistorial(horaFin)}
                       </Text>
                     </View>
@@ -647,10 +649,10 @@ export default function ConductorScreen() {
 
                   <View style={styles.historyDateRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="calendar-outline" size={14} color={Colors.mutedText} />
-                      <Text style={styles.mutedText}>{formatFechaHistorial(h.fecha)}</Text>
+                      <Ionicons name="calendar-outline" size={14} color={colors.mutedText} />
+                      <Text style={[styles.mutedText, { color: colors.mutedText }]}>{formatFechaHistorial(h.fecha)}</Text>
                     </View>
-                    <Text style={styles.mutedText}>
+                    <Text style={[styles.mutedText, { color: colors.mutedText }]}>
                       Vehículo: {vehiculo?.placa || placa || (h.idVehiculo ? `#${h.idVehiculo}` : '-')}
                     </Text>
                   </View>
@@ -663,56 +665,56 @@ export default function ConductorScreen() {
         <ScrollView
           // Espacio extra abajo para que el monitor de somnolencia flotante no tape la lista
           contentContainerStyle={[styles.content, estado === 'en-curso' && { paddingBottom: 160 }]}
-          refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={Colors.primary} />}
+          refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} tintColor={colors.primary} />}
         >
           {/* En recorrido: franja compacta para dejarle el espacio al mapa y a la siguiente parada */}
           {estado === 'en-curso' ? (
-            <View style={styles.compactCard}>
+            <View style={[styles.compactCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.compactAvatar}>
-                <Ionicons name="person-outline" size={18} color={Colors.primary} />
+                <Ionicons name="person-outline" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.name} numberOfLines={1}>
+                <Text style={[styles.name, { color: colors.darkText }]} numberOfLines={1}>
                   {`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}
                 </Text>
-                <Text style={[styles.accentText, { marginTop: 0 }]} numberOfLines={1}>
+                <Text style={[styles.accentText, { marginTop: 0, color: colors.primary }]} numberOfLines={1}>
                   {ruta?.nombreRuta || 'Sin ruta asignada'}
                 </Text>
               </View>
-              <View style={styles.compactPlaca}>
-                <Text style={styles.compactPlacaText}>{vehiculo?.placa || placa || '-'}</Text>
+              <View style={[styles.compactPlaca, { backgroundColor: isDark ? colors.darker : colors.background, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.compactPlacaText, { color: colors.darkText }]}>{vehiculo?.placa || placa || '-'}</Text>
               </View>
             </View>
           ) : (
             /* Tarjeta del Conductor y Vehículo asignado (placa, modelo, capacidad) y ruta asignada */
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={[styles.row, { marginBottom: 12 }]}>
                 <View style={styles.avatar}>
-                  <Ionicons name="person-outline" size={24} color={Colors.primary} />
+                  <Ionicons name="person-outline" size={24} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
+                  <Text style={[styles.name, { color: colors.darkText }]}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                    <Ionicons name="map-outline" size={14} color={Colors.primary} />
-                    <Text style={styles.accentText}>{ruta?.nombreRuta || 'Sin ruta asignada'}</Text>
+                    <Ionicons name="map-outline" size={14} color={colors.primary} />
+                    <Text style={[styles.accentText, { color: colors.primary }]}>{ruta?.nombreRuta || 'Sin ruta asignada'}</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.vehicleInfoBox}>
+              <View style={[styles.vehicleInfoBox, { backgroundColor: isDark ? colors.darker : colors.background }]}>
                 <View style={styles.vehicleItem}>
-                  <Text style={styles.vehicleLabel}>PLACA</Text>
-                  <Text style={styles.vehicleValue}>{vehiculo?.placa || placa || '-'}</Text>
+                  <Text style={[styles.vehicleLabel, { color: colors.mutedText }]}>PLACA</Text>
+                  <Text style={[styles.vehicleValue, { color: colors.darkText }]}>{vehiculo?.placa || placa || '-'}</Text>
                 </View>
                 <View style={styles.vehicleDivider} />
                 <View style={styles.vehicleItem}>
-                  <Text style={styles.vehicleLabel}>MODELO</Text>
-                  <Text style={styles.vehicleValue}>{vehiculo?.modelo || 'No registrado'}</Text>
+                  <Text style={[styles.vehicleLabel, { color: colors.mutedText }]}>MODELO</Text>
+                  <Text style={[styles.vehicleValue, { color: colors.darkText }]}>{vehiculo?.modelo || 'No registrado'}</Text>
                 </View>
                 <View style={styles.vehicleDivider} />
                 <View style={styles.vehicleItem}>
-                  <Text style={styles.vehicleLabel}>CAPACIDAD</Text>
-                  <Text style={styles.vehicleValue}>
+                  <Text style={[styles.vehicleLabel, { color: colors.mutedText }]}>CAPACIDAD</Text>
+                  <Text style={[styles.vehicleValue, { color: colors.darkText }]}>
                     {vehiculo?.capacidadPasajeros != null
                       ? `${vehiculo.capacidadPasajeros} pas.`
                       : vehiculo?.capacidad != null
@@ -762,39 +764,39 @@ export default function ConductorScreen() {
               {/* Siguiente parada según la ruta óptima, con navegación paso a paso en Google Maps */}
               {estado === 'en-curso' &&
                 (proxima && plan ? (
-                  <View style={styles.nextStopCard}>
+                  <View style={[styles.nextStopCard, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.08)' : colors.card, borderColor: isDark ? 'rgba(0, 212, 255, 0.35)' : colors.cardBorder }]}>
                     <View style={[styles.row, { gap: 12 }]}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.nextStopLabel}>SIGUIENTE PARADA · #{plan.siguiente + 1}</Text>
-                        <Text style={styles.nextStopName} numberOfLines={1}>
+                        <Text style={[styles.nextStopLabel, { color: colors.primary }]}>SIGUIENTE PARADA · #{plan.siguiente + 1}</Text>
+                        <Text style={[styles.nextStopName, { color: colors.darkText }]} numberOfLines={1}>
                           {proxima.nombreParada}
                         </Text>
-                        <Text style={styles.nextStopMeta}>
+                        <Text style={[styles.nextStopMeta, { color: colors.mutedText }]}>
                           {plan.siguienteKm} km · {plan.siguienteMin} min
                         </Text>
                       </View>
                       <TouchableOpacity
-                        style={styles.navButton}
+                        style={[styles.navButton, { backgroundColor: colors.primary }]}
                         onPress={() => navegarA(Number(proxima.latitud), Number(proxima.longitud))}
                         accessibilityLabel={`Navegar a ${proxima.nombreParada}`}
                       >
-                        <Ionicons name="navigate" size={16} color={Colors.darker} />
-                        <Text style={styles.navButtonText}>Navegar</Text>
+                        <Ionicons name="navigate" size={16} color={isDark ? Colors.darker : '#ffffff'} />
+                        <Text style={[styles.navButtonText, { color: isDark ? Colors.darker : '#ffffff' }]}>Navegar</Text>
                       </TouchableOpacity>
                     </View>
                     {esperanEnProxima.length > 0 && (
-                      <Text style={[styles.nextStopMeta, { marginTop: 8, color: Colors.darkText }]} numberOfLines={2}>
-                        <Text style={{ color: Colors.primary, fontWeight: '700' }}>Recoger: </Text>
+                      <Text style={[styles.nextStopMeta, { marginTop: 8, color: colors.darkText }]} numberOfLines={2}>
+                        <Text style={{ color: colors.primary, fontWeight: '700' }}>Recoger: </Text>
                         {esperanEnProxima.map(e => `${e.nombre} ${e.apellido || ''}`.trim()).join(', ')}
                       </Text>
                     )}
                   </View>
                 ) : (
-                  <View style={[styles.nextStopCard, styles.row, { gap: 10 }]}>
+                  <View style={[styles.nextStopCard, styles.row, { gap: 10, backgroundColor: isDark ? 'rgba(0, 212, 255, 0.08)' : colors.card, borderColor: isDark ? 'rgba(0, 212, 255, 0.35)' : colors.cardBorder }]}>
                     <Ionicons
                       name={paradasPendientes.length === 0 ? 'flag-outline' : 'navigate-circle-outline'}
                       size={22}
-                      color={Colors.primary}
+                      color={colors.primary}
                     />
                     <Text style={[styles.nextStopMeta, { flex: 1, marginTop: 0 }]}>
                       {paradasPendientes.length === 0
@@ -874,46 +876,46 @@ export default function ConductorScreen() {
               )}
 
               <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>ESTUDIANTES DE LA RUTA</Text>
-                <Text style={styles.progressText}>{abordados} de {total} abordados</Text>
+                <Text style={[styles.sectionTitle, { color: colors.darkText }]}>ESTUDIANTES DE LA RUTA</Text>
+                <Text style={[styles.progressText, { color: colors.primary }]}>{abordados} de {total} abordados</Text>
               </View>
               <View style={styles.progressTrack}>
-                <View style={{ flex: abordados, backgroundColor: estado === 'finalizado' ? RutaColors.success : Colors.primary }} />
+                <View style={{ flex: abordados, backgroundColor: estado === 'finalizado' ? RutaColors.success : colors.primary }} />
                 <View style={{ flex: ausentes, backgroundColor: RutaColors.danger }} />
                 <View style={{ flex: pendientes }} />
               </View>
 
               {estado === 'en-curso' && pendientes > 0 && (
                 <TouchableOpacity
-                  style={[styles.mainButton, { height: 46, marginBottom: 12, borderWidth: 1, borderColor: Colors.primary, backgroundColor: 'rgba(0, 212, 255, 0.1)' }]}
+                  style={[styles.mainButton, { height: 46, marginBottom: 12, borderWidth: 1, borderColor: colors.primary, backgroundColor: isDark ? 'rgba(0, 212, 255, 0.1)' : 'rgba(2, 132, 199, 0.12)' }]}
                   onPress={asistenciaFacial}
                   disabled={ocupado}
                 >
-                  {ocupado ? <ActivityIndicator color={Colors.primary} /> : <Ionicons name="scan-outline" size={20} color={Colors.primary} />}
-                  <Text style={[styles.mainButtonText, { color: Colors.primary, fontSize: 15 }]}>Tomar asistencia con rostro</Text>
+                  {ocupado ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="scan-outline" size={20} color={colors.primary} />}
+                  <Text style={[styles.mainButtonText, { color: colors.primary, fontSize: 15 }]}>Tomar asistencia con rostro</Text>
                 </TouchableOpacity>
               )}
-              <Text style={[styles.mutedText, { marginBottom: 12 }]}>{resumen}</Text>
+              <Text style={[styles.mutedText, { marginBottom: 12, color: colors.mutedText }]}>{resumen}</Text>
 
               {estudiantes.map(e => {
                 const a = asistenciaDe(e.idEstudiante);
                 const esSiguiente = siguiente?.idEstudiante === e.idEstudiante;
-                const pill = esSiguiente ? { text: 'Siguiente parada', color: Colors.primary } : pillAsistencia(a);
+                const pill = esSiguiente ? { text: 'Siguiente parada', color: colors.primary } : pillAsistencia(a);
                 const pendiente = !a || a.estadoAbordaje === 'Pendiente';
                 const parada = paradas.find(p => p.idParada === e.idParada);
                 const orden = parada ? paradas.indexOf(parada) + 1 : '-';
-                const borde = esSiguiente ? Colors.primary : pendiente ? RutaColors.cardBorder : pill.color;
+                const borde = esSiguiente ? colors.primary : pendiente ? colors.cardBorder : pill.color;
                 const tieneGps = a && !pendiente && (a.latitud != null || a.latitudAbordaje != null || a.latitudEntrega != null);
 
                 return (
-                  <View key={e.idEstudiante} style={[styles.studentCard, { borderColor: borde }]}>
+                  <View key={e.idEstudiante} style={[styles.studentCard, { backgroundColor: colors.card, borderColor: borde }]}>
                     <View style={styles.row}>
                       <View style={styles.orderCircle}>
-                        <Text style={{ color: Colors.primary, fontWeight: '700' }}>{orden}</Text>
+                        <Text style={{ color: colors.primary, fontWeight: '700' }}>{orden}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.name}>{`${e.nombre} ${e.apellido || ''}`.trim()}</Text>
-                        <Text style={styles.mutedText}>
+                        <Text style={[styles.name, { color: colors.darkText }]}>{`${e.nombre} ${e.apellido || ''}`.trim()}</Text>
+                        <Text style={[styles.mutedText, { color: colors.mutedText }]}>
                           {parada?.nombreParada || 'Sin parada'} · {e.colegio || 'Sin colegio'}
                         </Text>
                       </View>

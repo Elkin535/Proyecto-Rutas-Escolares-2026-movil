@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { Colors } from '../constants/Colors';
+import { useTheme } from '../context/ThemeContext';
 import {
   ESTADO_LABEL,
   InfoEta,
@@ -102,6 +103,7 @@ export default function PanelEstudianteBottomSheet({
   onCentrarParada,
   onCentrarRuta,
 }: PanelEstudianteBottomSheetProps) {
+  const { colors, isDark } = useTheme();
   const animatedHeight = useMemo(() => new Animated.Value(SNAP_COLLAPSED), []);
   const currentHeightRef = useRef<number>(SNAP_COLLAPSED);
   const [snapState, setSnapState] = useState<'collapsed' | 'half' | 'expanded'>('collapsed');
@@ -145,22 +147,17 @@ export default function PanelEstudianteBottomSheet({
           }
         },
         onPanResponderRelease: (_, gesture) => {
-          const alturaActual = currentHeightRef.current - gesture.dy;
-          const vy = gesture.vy;
-
-          // Deslizado rápido hacia arriba
-          if (vy < -0.5) {
-            if (alturaActual < SNAP_HALF) {
+          // Gesto rápido (Flick)
+          if (gesture.vy < -0.5) {
+            if (currentHeightRef.current < SNAP_HALF) {
               animarA(SNAP_HALF, 'half');
             } else {
               animarA(SNAP_EXPANDED, 'expanded');
             }
             return;
           }
-
-          // Deslizado rápido hacia abajo
-          if (vy > 0.5) {
-            if (alturaActual > SNAP_HALF) {
+          if (gesture.vy > 0.5) {
+            if (currentHeightRef.current > SNAP_HALF) {
               animarA(SNAP_HALF, 'half');
             } else {
               animarA(SNAP_COLLAPSED, 'collapsed');
@@ -168,38 +165,36 @@ export default function PanelEstudianteBottomSheet({
             return;
           }
 
-          // Snap por cercanía a los puntos
-          const dCollapsed = Math.abs(alturaActual - SNAP_COLLAPSED);
-          const dHalf = Math.abs(alturaActual - SNAP_HALF);
-          const dExpanded = Math.abs(alturaActual - SNAP_EXPANDED);
+          // Posición relativa al soltar
+          const valorActual = currentHeightRef.current - gesture.dy;
+          const distancias = [
+            { estado: 'collapsed' as const, val: SNAP_COLLAPSED, dist: Math.abs(valorActual - SNAP_COLLAPSED) },
+            { estado: 'half' as const, val: SNAP_HALF, dist: Math.abs(valorActual - SNAP_HALF) },
+            { estado: 'expanded' as const, val: SNAP_EXPANDED, dist: Math.abs(valorActual - SNAP_EXPANDED) },
+          ].sort((a, b) => a.dist - b.dist);
 
-          if (dCollapsed < dHalf && dCollapsed < dExpanded) {
-            animarA(SNAP_COLLAPSED, 'collapsed');
-          } else if (dHalf < dExpanded) {
-            animarA(SNAP_HALF, 'half');
-          } else {
-            animarA(SNAP_EXPANDED, 'expanded');
-          }
+          animarA(distancias[0].val, distancias[0].estado);
         },
       }),
-    [animarA, animatedHeight]
+    [animatedHeight, animarA]
   );
   /* eslint-enable react-hooks/refs */
 
   if (!estudiante) return null;
 
-  const nombre = `${estudiante.nombre} ${estudiante.apellido || ''}`.trim();
+  const { estado, abordo, entregado, esperando, pill } = obtenerEstadoEstudiante(estudiante, infoRuta);
+  const nombre = `${estudiante.nombre || ''} ${estudiante.apellido || ''}`.trim() || 'Estudiante';
   const paradas = infoRuta?.paradas || [];
   const ordenados = infoRuta?.ordenados || [];
   const asistencias = infoRuta?.asistencias || [];
-  const { estado, abordo, entregado, esperando, pill } = obtenerEstadoEstudiante(estudiante, infoRuta);
   const miParadaIndex = paradas.findIndex(p => p.idParada === estudiante.idParada);
   const miParada = paradas[miParadaIndex];
   const { busIndex } = progresoRuta(estado, paradas, ordenados, asistencias);
-  const faltanParadas = Math.max(0, miParadaIndex - busIndex);
+  const faltanParadas = miParadaIndex >= 0 ? Math.max(0, miParadaIndex - busIndex) : 0;
 
-  const placa = infoRuta?.vehiculo?.placa || placaDeRuta(infoRuta?.ruta?.descripcion);
-  const modelo = infoRuta?.vehiculo?.modelo || 'No registrado';
+  const vehiculo = infoRuta?.vehiculo;
+  const placa = vehiculo?.placa || placaDeRuta(infoRuta?.ruta?.descripcion);
+  const modelo = vehiculo?.modelo || vehiculo?.marca || 'Vehículo asignado';
   const conductorNombre =
     infoRuta?.conductorNombre || conductorDeRuta(infoRuta?.ruta?.descripcion) || 'No asignado';
   const conductorTelefono =
@@ -207,17 +202,17 @@ export default function PanelEstudianteBottomSheet({
   const listaHijos = estudiantes.length > 0 ? estudiantes : [estudiante];
 
   return (
-    <Animated.View style={[styles.bottomSheet, { height: animatedHeight }]}>
+    <Animated.View style={[styles.bottomSheet, { height: animatedHeight, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
       {/* Barra superior de agarre con PanResponder */}
       <View {...panResponder.panHandlers} style={styles.handleArea}>
         <TouchableOpacity activeOpacity={0.7} onPress={toggleSnap} style={styles.handleTouchable}>
-          <View style={styles.handleBar} />
+          <View style={[styles.handleBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)' }]} />
         </TouchableOpacity>
       </View>
 
       {/* Resumen siempre visible (Header del Panel) */}
       <View style={styles.summaryRow}>
-        <View style={styles.avatar}>
+        <View style={[styles.avatar, { backgroundColor: isDark ? '#12203a' : colors.background }]}>
           <Ionicons
             name={abordo ? 'bus' : entregado ? 'checkmark-circle' : 'school-outline'}
             size={22}
@@ -227,7 +222,7 @@ export default function PanelEstudianteBottomSheet({
 
         <View style={styles.summaryInfo}>
           <View style={styles.summaryTitleRow}>
-            <Text style={styles.studentName} numberOfLines={1}>
+            <Text style={[styles.studentName, { color: colors.darkText }]} numberOfLines={1}>
               {nombre}
             </Text>
             <View style={[styles.pillBadge, { backgroundColor: pill.bg }]}>
@@ -235,17 +230,17 @@ export default function PanelEstudianteBottomSheet({
             </View>
           </View>
 
-          <Text style={styles.subText} numberOfLines={1}>
+          <Text style={[styles.subText, { color: colors.mutedText }]} numberOfLines={1}>
             {miParada?.nombreParada ? `Parada: ${miParada.nombreParada}` : 'Sin parada'} · {estudiante.colegio || 'Sin colegio'}
           </Text>
         </View>
 
         {/* Botón rápido para alternar expansión */}
-        <TouchableOpacity onPress={toggleSnap} style={styles.expandButton}>
+        <TouchableOpacity onPress={toggleSnap} style={[styles.expandButton, { backgroundColor: isDark ? '#13213a' : colors.background }]}>
           <Ionicons
             name={snapState === 'expanded' ? 'chevron-down' : 'chevron-up'}
             size={20}
-            color={Colors.primary}
+            color={colors.primary}
           />
         </TouchableOpacity>
       </View>
@@ -257,16 +252,16 @@ export default function PanelEstudianteBottomSheet({
         showsVerticalScrollIndicator={false}
       >
         {/* Listado de todos los estudiantes a cargo del acudiente (1, 2, 3, 4 o más) */}
-        <View style={styles.hijosSection}>
+        <View style={[styles.hijosSection, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.hijosSectionHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="people-outline" size={16} color={Colors.primary} />
-              <Text style={styles.hijosSectionTitle}>
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={[styles.hijosSectionTitle, { color: colors.darkText }]}>
                 Estudiantes a cargo ({listaHijos.length})
               </Text>
             </View>
             {listaHijos.length > 1 && (
-              <Text style={styles.hijosSectionHint}>Toca un estudiante para ver su ruta</Text>
+              <Text style={[styles.hijosSectionHint, { color: colors.mutedText }]}>Toca un estudiante para ver su ruta</Text>
             )}
           </View>
 
@@ -286,19 +281,20 @@ export default function PanelEstudianteBottomSheet({
                   onPress={() => onSelectEstudiante?.(h.idEstudiante)}
                   style={[
                     styles.hijoCard,
+                    { backgroundColor: isDark ? '#0c1729' : colors.background, borderColor: colors.cardBorder },
                     esActivo && styles.hijoCardActivo,
                   ]}
                 >
                   <View
                     style={[
                       styles.hijoAvatarSmall,
-                      esActivo && { borderColor: Colors.primary, backgroundColor: 'rgba(0, 212, 255, 0.15)' },
+                      esActivo && { borderColor: colors.primary, backgroundColor: isDark ? 'rgba(0, 212, 255, 0.15)' : 'rgba(2, 132, 199, 0.12)' },
                     ]}
                   >
                     <Ionicons
                       name={estHijo.abordo ? 'bus' : estHijo.entregado ? 'checkmark-circle' : 'person-outline'}
                       size={16}
-                      color={esActivo ? Colors.primary : estHijo.pill.color}
+                      color={esActivo ? colors.primary : estHijo.pill.color}
                     />
                   </View>
 
@@ -307,7 +303,8 @@ export default function PanelEstudianteBottomSheet({
                       <Text
                         style={[
                           styles.hijoNombre,
-                          esActivo && { color: Colors.primary },
+                          { color: colors.darkText },
+                          esActivo && { color: colors.primary },
                         ]}
                         numberOfLines={1}
                       >
@@ -319,21 +316,21 @@ export default function PanelEstudianteBottomSheet({
                         </Text>
                       </View>
                     </View>
-                    <Text style={styles.hijoMeta} numberOfLines={1}>
+                    <Text style={[styles.hijoMeta, { color: colors.mutedText }]} numberOfLines={1}>
                       {h.colegio || 'Sin colegio'}
                       {h.cursoGrado ? ` · ${h.cursoGrado}` : ''}
                       {infoHijo?.ruta?.nombreRuta ? ` · ${infoHijo.ruta.nombreRuta}` : ' · Sin ruta'}
                       {placaHijo ? ` (${placaHijo})` : ''}
                     </Text>
                     {paradaHijo?.nombreParada ? (
-                      <Text style={styles.hijoParadaText} numberOfLines={1}>
+                      <Text style={[styles.hijoParadaText, { color: colors.primary }]} numberOfLines={1}>
                         Parada: {paradaHijo.nombreParada}
                       </Text>
                     ) : null}
                   </View>
 
                   {esActivo && (
-                    <Ionicons name="radio-button-on" size={18} color={Colors.primary} />
+                    <Ionicons name="radio-button-on" size={18} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               );
@@ -356,13 +353,13 @@ export default function PanelEstudianteBottomSheet({
 
         {/* Widget ETA Destacado */}
         {estado === 'en-curso' && bus ? (
-          <View style={styles.etaWidget}>
+          <View style={[styles.etaWidget, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.etaHeader}>
-              <View style={styles.etaIconBadge}>
-                <Ionicons name="time" size={20} color={Colors.primary} />
+              <View style={[styles.etaIconBadge, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(2, 132, 199, 0.12)' }]}>
+                <Ionicons name="time" size={20} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.etaKicker}>
+                <Text style={[styles.etaKicker, { color: colors.primary }]}>
                   {esperando
                     ? 'TIEMPO ESTIMADO A TU PARADA'
                     : abordo
@@ -370,54 +367,54 @@ export default function PanelEstudianteBottomSheet({
                       : 'TIEMPO ESTIMADO'}
                 </Text>
                 <View style={styles.etaTimeRow}>
-                  <Text style={styles.etaDuration}>
+                  <Text style={[styles.etaDuration, { color: colors.darkText }]}>
                     {infoEta?.duracionTexto || 'Calculando...'}
                   </Text>
                   {infoEta?.horaEstimada ? (
-                    <Text style={styles.etaHora}>· Aprox. {infoEta.horaEstimada}</Text>
+                    <Text style={[styles.etaHora, { color: colors.mutedText }]}>· Aprox. {infoEta.horaEstimada}</Text>
                   ) : null}
                 </View>
               </View>
             </View>
 
-            <View style={styles.etaStatsGrid}>
+            <View style={[styles.etaStatsGrid, { borderTopColor: colors.cardBorder }]}>
               <View style={styles.etaStatItem}>
-                <Ionicons name="navigate-outline" size={16} color={Colors.primary} />
-                <Text style={styles.etaStatValue}>{infoEta?.distanciaKm || '--'}</Text>
-                <Text style={styles.etaStatLabel}>Distancia vial</Text>
+                <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+                <Text style={[styles.etaStatValue, { color: colors.darkText }]}>{infoEta?.distanciaKm || '--'}</Text>
+                <Text style={[styles.etaStatLabel, { color: colors.mutedText }]}>Distancia vial</Text>
               </View>
 
               <View style={styles.etaStatItem}>
                 <Ionicons name="location-outline" size={16} color="#f59e0b" />
-                <Text style={styles.etaStatValue}>
+                <Text style={[styles.etaStatValue, { color: colors.darkText }]}>
                   {esperando
                     ? faltanParadas === 0
                       ? 'Llegando'
                       : `${faltanParadas} parada${faltanParadas > 1 ? 's' : ''}`
                     : 'En ruta'}
                 </Text>
-                <Text style={styles.etaStatLabel}>Restantes</Text>
+                <Text style={[styles.etaStatLabel, { color: colors.mutedText }]}>Restantes</Text>
               </View>
 
               <View style={styles.etaStatItem}>
                 <Ionicons name="bus-outline" size={16} color="#22c55e" />
-                <Text style={styles.etaStatValue}>{placa || 'Asignado'}</Text>
-                <Text style={styles.etaStatLabel}>Placa bus</Text>
+                <Text style={[styles.etaStatValue, { color: colors.darkText }]}>{placa || 'Asignado'}</Text>
+                <Text style={[styles.etaStatLabel, { color: colors.mutedText }]}>Placa bus</Text>
               </View>
             </View>
           </View>
         ) : (
-          <View style={styles.statusNoViaje}>
+          <View style={[styles.statusNoViaje, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <Ionicons
               name={estado === 'finalizado' ? 'flag-outline' : 'moon-outline'}
               size={24}
-              color={Colors.mutedText}
+              color={colors.mutedText}
             />
             <View style={{ flex: 1 }}>
-              <Text style={styles.statusNoViajeTitle}>
+              <Text style={[styles.statusNoViajeTitle, { color: colors.darkText }]}>
                 {estado === 'finalizado' ? 'Recorrido finalizado hoy' : 'Recorrido no iniciado'}
               </Text>
-              <Text style={styles.statusNoViajeDesc}>
+              <Text style={[styles.statusNoViajeDesc, { color: colors.mutedText }]}>
                 {estado === 'finalizado'
                   ? 'El bus ha completado todas las paradas del día.'
                   : 'El conductor iniciará la ruta en el horario programado.'}
@@ -429,33 +426,33 @@ export default function PanelEstudianteBottomSheet({
         {/* Acciones Rápidas del Mapa */}
         <View style={styles.accionesRow}>
           {bus && onCentrarBus && (
-            <TouchableOpacity style={styles.accionBoton} onPress={onCentrarBus}>
-              <Ionicons name="bus" size={16} color={Colors.primary} />
-              <Text style={styles.accionTexto}>Ver Bus</Text>
+            <TouchableOpacity style={[styles.accionBoton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={onCentrarBus}>
+              <Ionicons name="bus" size={16} color={colors.primary} />
+              <Text style={[styles.accionTexto, { color: colors.darkText }]}>Ver Bus</Text>
             </TouchableOpacity>
           )}
 
           {miParada && onCentrarParada && (
-            <TouchableOpacity style={styles.accionBoton} onPress={onCentrarParada}>
+            <TouchableOpacity style={[styles.accionBoton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={onCentrarParada}>
               <Ionicons name="pin" size={16} color="#f59e0b" />
-              <Text style={styles.accionTexto}>Mi Parada</Text>
+              <Text style={[styles.accionTexto, { color: colors.darkText }]}>Mi Parada</Text>
             </TouchableOpacity>
           )}
 
           {onCentrarRuta && (
-            <TouchableOpacity style={styles.accionBoton} onPress={onCentrarRuta}>
-              <Ionicons name="map-outline" size={16} color={Colors.darkText} />
-              <Text style={styles.accionTexto}>Ver Todo</Text>
+            <TouchableOpacity style={[styles.accionBoton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={onCentrarRuta}>
+              <Ionicons name="map-outline" size={16} color={colors.darkText} />
+              <Text style={[styles.accionTexto, { color: colors.darkText }]}>Ver Todo</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Itinerario en tiempo real de las paradas */}
         {paradas.length > 0 && (
-          <View style={styles.itinerarioCard}>
+          <View style={[styles.itinerarioCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.itinerarioHeader}>
-              <Ionicons name="list-outline" size={18} color={Colors.primary} />
-              <Text style={styles.itinerarioTitle}>Itinerario del recorrido</Text>
+              <Ionicons name="list-outline" size={18} color={colors.primary} />
+              <Text style={[styles.itinerarioTitle, { color: colors.darkText }]}>Itinerario del recorrido</Text>
             </View>
 
             {paradas.map((p, idx) => {
@@ -469,6 +466,7 @@ export default function PanelEstudianteBottomSheet({
                     <View
                       style={[
                         styles.paradaPunto,
+                        { backgroundColor: isDark ? '#0c1729' : colors.background, borderColor: colors.cardBorder },
                         visitada && styles.paradaPuntoVisitado,
                         esActual && styles.paradaPuntoActual,
                         esMiParada && styles.paradaPuntoMio,
@@ -482,6 +480,7 @@ export default function PanelEstudianteBottomSheet({
                         <Text
                           style={[
                             styles.paradaNumTexto,
+                            { color: colors.mutedText },
                             esMiParada && { color: '#081120', fontWeight: '800' },
                           ]}
                         >
@@ -493,7 +492,8 @@ export default function PanelEstudianteBottomSheet({
                       <View
                         style={[
                           styles.paradaLinea,
-                          visitada && { backgroundColor: Colors.primary },
+                          { backgroundColor: colors.cardBorder },
+                          visitada && { backgroundColor: colors.primary },
                         ]}
                       />
                     )}
@@ -504,6 +504,7 @@ export default function PanelEstudianteBottomSheet({
                       <Text
                         style={[
                           styles.paradaNombre,
+                          { color: colors.darkText },
                           visitada && styles.paradaNombreVisitada,
                           esMiParada && styles.paradaNombreMio,
                         ]}
@@ -517,7 +518,7 @@ export default function PanelEstudianteBottomSheet({
                       )}
                     </View>
                     {p.horaEstimada ? (
-                      <Text style={styles.paradaHora}>Hora prog: {formatHora(p.horaEstimada)}</Text>
+                      <Text style={[styles.paradaHora, { color: colors.mutedText }]}>Hora prog: {formatHora(p.horaEstimada)}</Text>
                     ) : null}
                   </View>
                 </View>
@@ -527,27 +528,27 @@ export default function PanelEstudianteBottomSheet({
         )}
 
         {/* Información del vehículo y conductor */}
-        <View style={styles.vehiculoCard}>
-          <Text style={styles.cardHeaderTitle}>Información básica del bus y conductor</Text>
+        <View style={[styles.vehiculoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.cardHeaderTitle, { color: colors.darkText }]}>Información básica del bus y conductor</Text>
           <View style={styles.infoGrid}>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Conductor</Text>
-              <Text style={styles.infoValue}>{conductorNombre}</Text>
+              <Text style={[styles.infoLabel, { color: colors.mutedText }]}>Conductor</Text>
+              <Text style={[styles.infoValue, { color: colors.darkText }]}>{conductorNombre}</Text>
             </View>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Placa del bus</Text>
-              <Text style={[styles.infoValue, { color: Colors.primary }]}>{placa || 'Sin placa'}</Text>
+              <Text style={[styles.infoLabel, { color: colors.mutedText }]}>Placa del bus</Text>
+              <Text style={[styles.infoValue, { color: colors.primary }]}>{placa || 'Sin placa'}</Text>
             </View>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Modelo del bus</Text>
-              <Text style={styles.infoValue}>{modelo}</Text>
+              <Text style={[styles.infoLabel, { color: colors.mutedText }]}>Modelo del bus</Text>
+              <Text style={[styles.infoValue, { color: colors.darkText }]}>{modelo}</Text>
             </View>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Ruta asignada</Text>
-              <Text style={styles.infoValue}>{infoRuta?.ruta?.nombreRuta || 'Sin asignar'}</Text>
+              <Text style={[styles.infoLabel, { color: colors.mutedText }]}>Ruta asignada</Text>
+              <Text style={[styles.infoValue, { color: colors.darkText }]}>{infoRuta?.ruta?.nombreRuta || 'Sin asignar'}</Text>
             </View>
             <View style={styles.infoRowItem}>
-              <Text style={styles.infoLabel}>Estado viaje</Text>
+              <Text style={[styles.infoLabel, { color: colors.mutedText }]}>Estado viaje</Text>
               <Text style={[styles.infoValue, { color: pill.color }]}>
                 {ESTADO_LABEL[estado]}
               </Text>
@@ -557,12 +558,12 @@ export default function PanelEstudianteBottomSheet({
           {/* Teléfono del conductor con botón directo para llamar */}
           <View style={styles.phoneRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <View style={styles.phoneIconBox}>
-                <Ionicons name="call-outline" size={16} color={Colors.primary} />
+              <View style={[styles.phoneIconBox, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.12)' : 'rgba(2, 132, 199, 0.12)' }]}>
+                <Ionicons name="call-outline" size={16} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.phoneLabel}>TELÉFONO DEL CONDUCTOR</Text>
-                <Text style={styles.phoneValue}>
+                <Text style={[styles.phoneLabel, { color: colors.mutedText }]}>TELÉFONO DEL CONDUCTOR</Text>
+                <Text style={[styles.phoneValue, { color: colors.darkText }]}>
                   {conductorTelefono || 'No registrado'}
                 </Text>
               </View>
@@ -570,13 +571,13 @@ export default function PanelEstudianteBottomSheet({
 
             {conductorTelefono ? (
               <TouchableOpacity
-                style={styles.callButton}
+                style={[styles.callButton, { backgroundColor: colors.primary }]}
                 onPress={() => Linking.openURL(`tel:${conductorTelefono.replace(/\s+/g, '')}`)}
                 accessibilityRole="button"
                 accessibilityLabel={`Llamar al conductor ${conductorNombre}`}
               >
-                <Ionicons name="call" size={14} color={Colors.darker} />
-                <Text style={styles.callButtonText}>Llamar</Text>
+                <Ionicons name="call" size={14} color={isDark ? Colors.darker : '#ffffff'} />
+                <Text style={[styles.callButtonText, { color: isDark ? Colors.darker : '#ffffff' }]}>Llamar</Text>
               </TouchableOpacity>
             ) : null}
           </View>

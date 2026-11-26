@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DialogoHost } from '../components/Dialogo';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
 // Registra la tarea de GPS en segundo plano al arrancar la app (Android la relanza sin abrir pantallas)
 import '../services/gpsTask';
@@ -46,6 +47,23 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   injectWebStyles();
 }
 
+function RootApp() {
+  const { isDark } = useTheme();
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="forgot-password" />
+      </Stack>
+      {/* Avisos y confirmaciones con el diseño de la app (en lugar del Alert blanco del sistema) */}
+      <DialogoHost />
+    </GestureHandlerRootView>
+  );
+}
+
 export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -80,16 +98,8 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="forgot-password" />
-      </Stack>
-      {/* Avisos y confirmaciones con el diseño de la app (en lugar del Alert blanco del sistema) */}
-      <DialogoHost />
-    </GestureHandlerRootView>
+    <ThemeProvider>
+      <RootApp />
+    </ThemeProvider>
   );
 }
-
