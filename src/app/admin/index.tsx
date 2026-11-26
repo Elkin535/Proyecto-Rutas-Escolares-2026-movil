@@ -14,17 +14,18 @@ import {
 import { HubConnectionBuilder } from '@microsoft/signalr';
 
 import BottomNav from '../../components/BottomNav';
+import { alerta } from '../../components/Dialogo';
 import DisenadorRuta from '../../components/DisenadorRuta';
 import FormModal, { Campo, Valores } from '../../components/FormModal';
 import MapaRuta, { ParadaMapa } from '../../components/MapaRuta';
 import MenuUsuario from '../../components/MenuUsuario';
 import PerfilView from '../../components/PerfilView';
 import { Colors } from '../../constants/Colors';
+import { useTheme } from '../../context/ThemeContext';
 import { API_URL, fetchApi, getJson, getStoredAuthData } from '../../services/api';
 import { registrarPush } from '../../services/push';
 import { registrarRostro, tomarFotoBase64 } from '../../services/rostros';
 import { avisar, confirmar as confirmarRuta, placaDeRuta } from '../../services/ruta';
-import { alerta } from '../../components/Dialogo';
 import { MetricColors, styles } from '../../styles/admin.styles';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -79,6 +80,7 @@ const entero = (v?: string) => (v ? parseInt(v, 10) : null);
 const fechaIso = (v?: string) => (v ? new Date(`${v}T00:00:00`).toISOString() : null);
 
 export default function AdminScreen() {
+  const { colors, isDark } = useTheme();
   const [vista, setVista] = useState('inicio');
   const [tab, setTab] = useState<Tab>('resumen');
   const [search, setSearch] = useState('');
@@ -130,6 +132,7 @@ export default function AdminScreen() {
 
   useEffect(() => {
     getStoredAuthData().then(({ usuario: u }) => setUsuario(u));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarTodo().finally(() => setCargando(false));
     registrarPush();
   }, [cargarTodo]);
@@ -185,14 +188,14 @@ export default function AdminScreen() {
     const botones =
       Platform.OS === 'web'
         ? [
-            { text: 'Cancelar', style: 'cancel' as const },
-            { text: 'Elegir foto', onPress: () => tomar('galeria') },
-          ]
+          { text: 'Cancelar', style: 'cancel' as const },
+          { text: 'Elegir foto', onPress: () => tomar('galeria') },
+        ]
         : [
-            { text: 'Cancelar', style: 'cancel' as const },
-            { text: 'Galería', onPress: () => tomar('galeria') },
-            { text: 'Tomar foto', onPress: () => tomar('camara') },
-          ];
+          { text: 'Cancelar', style: 'cancel' as const },
+          { text: 'Galería', onPress: () => tomar('galeria') },
+          { text: 'Tomar foto', onPress: () => tomar('camara') },
+        ];
     alerta(`Registrar rostro de ${e.nombre}`, aviso, botones, 'rostro');
   };
 
@@ -276,7 +279,7 @@ export default function AdminScreen() {
     try {
       await crearPerfil(u.idUsuario);
     } catch (e) {
-      await fetchApi(`/Usuario/eliminar?id=${u.idUsuario}`, { method: 'DELETE' }).catch(() => {});
+      await fetchApi(`/Usuario/eliminar?id=${u.idUsuario}`, { method: 'DELETE' }).catch(() => { });
       throw e;
     }
   };
@@ -372,16 +375,16 @@ export default function AdminScreen() {
             },
             ...(v.idRuta
               ? [
-                  {
-                    key: 'idParada',
-                    label: 'Parada de recogida',
-                    tipo: 'select',
-                    opciones: paradasDeRuta(Number(v.idRuta)).map((p, i) => ({
-                      value: String(p.idParada),
-                      label: `${i + 1}. ${p.nombreParada}`,
-                    })),
-                  } as Campo,
-                ]
+                {
+                  key: 'idParada',
+                  label: 'Parada de recogida',
+                  tipo: 'select',
+                  opciones: paradasDeRuta(Number(v.idRuta)).map((p, i) => ({
+                    value: String(p.idParada),
+                    label: `${i + 1}. ${p.nombreParada}`,
+                  })),
+                } as Campo,
+              ]
               : []),
           ],
           iniciales: {
@@ -632,11 +635,11 @@ export default function AdminScreen() {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View>
-          <Text style={[styles.headerSubtitle, { color: Colors.primary }]}>CENTRO DE CONTROL</Text>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerSubtitle, { color: colors.primary }]}>CENTRO DE CONTROL</Text>
+          <Text style={[styles.headerTitle, { color: colors.darkText }]}>
             {vista === 'perfil' ? 'Mi perfil' : `Hola, ${usuario?.nombre || 'administrador'}`}
           </Text>
         </View>
@@ -652,9 +655,19 @@ export default function AdminScreen() {
               {TABS.map(t => {
                 const activo = t.key === tab;
                 return (
-                  <TouchableOpacity key={t.key} style={[styles.tab, activo && styles.tabActive]} onPress={() => cambiarTab(t.key)}>
-                    <Ionicons name={t.icon} size={16} color={activo ? Colors.darker : Colors.mutedText} />
-                    <Text style={[styles.tabText, activo && styles.tabTextActive]}>{t.label}</Text>
+                  <TouchableOpacity
+                    key={t.key}
+                    style={[
+                      styles.tab,
+                      { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                      activo && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    ]}
+                    onPress={() => cambiarTab(t.key)}
+                  >
+                    <Ionicons name={t.icon} size={16} color={activo ? Colors.darker : colors.mutedText} />
+                    <Text style={[styles.tabText, { color: colors.mutedText }, activo && { color: Colors.darker, fontWeight: '700' }]}>
+                      {t.label}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -673,43 +686,51 @@ export default function AdminScreen() {
                     {alertas
                       .filter(a => !a.atendida)
                       .map(a => (
-                        <View key={a.idAlerta} style={[styles.card, { borderColor: MetricColors.danger }]}>
+                        <View key={a.idAlerta} style={[styles.card, { backgroundColor: colors.card, borderColor: MetricColors.danger }]}>
                           <View style={styles.cardBody}>
                             <Text style={[styles.cardTitle, { color: MetricColors.danger }]}>{a.tipo}</Text>
-                            <Text style={styles.cardLine}>{a.mensaje}</Text>
-                            <Text style={styles.cardLine}>{new Date(a.fecha.endsWith('Z') ? a.fecha : `${a.fecha}Z`).toLocaleString()}</Text>
+                            <Text style={[styles.cardLine, { color: colors.mutedText }]}>{a.mensaje}</Text>
+                            <Text style={[styles.cardLine, { color: colors.mutedText }]}>{new Date(a.fecha.endsWith('Z') ? a.fecha : `${a.fecha}Z`).toLocaleString()}</Text>
                           </View>
-                          <TouchableOpacity style={styles.editButton} onPress={() => atenderAlerta(a.idAlerta)} accessibilityLabel="Marcar alerta como atendida">
-                            <Ionicons name="checkmark-done-outline" size={18} color={Colors.primary} />
+                          <TouchableOpacity
+                            style={[styles.editButton, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(2, 132, 199, 0.12)' }]}
+                            onPress={() => atenderAlerta(a.idAlerta)}
+                            accessibilityLabel="Marcar alerta como atendida"
+                          >
+                            <Ionicons name="checkmark-done-outline" size={18} color={colors.primary} />
                           </TouchableOpacity>
                         </View>
                       ))}
                   </>
                 )}
 
-                <Text style={styles.sectionTitle}>Estadísticas generales</Text>
+                <Text style={[styles.sectionTitle, { color: colors.darkText }]}>Estadísticas generales</Text>
                 <View style={styles.metricsGrid}>
                   {metricasCards.map(m => (
-                    <TouchableOpacity key={m.label} style={styles.metricCard} onPress={() => cambiarTab(m.tab)}>
+                    <TouchableOpacity
+                      key={m.label}
+                      style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                      onPress={() => cambiarTab(m.tab)}
+                    >
                       <View style={[styles.metricIcon, { backgroundColor: `${m.color}26` }]}>
                         <Ionicons name={m.icon} size={22} color={m.color} />
                       </View>
-                      <Text style={styles.metricValue}>{m.value}</Text>
-                      <Text style={styles.metricLabel}>{m.label}</Text>
+                      <Text style={[styles.metricValue, { color: colors.darkText }]}>{m.value}</Text>
+                      <Text style={[styles.metricLabel, { color: colors.mutedText }]}>{m.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Estado de las rutas</Text>
-                {estadoRutas.length === 0 && <Text style={styles.emptyText}>No hay rutas registradas</Text>}
+                <Text style={[styles.sectionTitle, { color: colors.darkText, marginTop: 24 }]}>Estado de las rutas</Text>
+                {estadoRutas.length === 0 && <Text style={[styles.emptyText, { color: colors.mutedText }]}>No hay rutas registradas</Text>}
                 {estadoRutas.map(({ r, placa, activa, nEst }) => {
-                  const color = activa ? MetricColors.vehicles : Colors.mutedText;
+                  const color = activa ? MetricColors.vehicles : colors.mutedText;
                   return (
-                    <View key={r.idRuta} style={styles.statusRow}>
+                    <View key={r.idRuta} style={[styles.statusRow, { borderBottomColor: colors.border }]}>
                       <Ionicons name={activa ? 'checkmark-circle-outline' : 'time-outline'} size={24} color={color} />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.cardTitle}>{r.nombreRuta}</Text>
-                        <Text style={styles.cardLine}>Vehículo {placa || '-'} · {nEst} estudiantes</Text>
+                        <Text style={[styles.cardTitle, { color: colors.darkText }]}>{r.nombreRuta}</Text>
+                        <Text style={[styles.cardLine, { color: colors.mutedText }]}>Vehículo {placa || '-'} · {nEst} estudiantes</Text>
                       </View>
                       <View style={[styles.statusBadge, { backgroundColor: `${color}26` }]}>
                         <Text style={{ color, fontSize: 12, fontWeight: '700' }}>{activa ? 'En curso' : 'En espera'}</Text>
@@ -718,61 +739,73 @@ export default function AdminScreen() {
                   );
                 })}
 
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Gestión</Text>
+                <Text style={[styles.sectionTitle, { color: colors.darkText, marginTop: 24 }]}>Gestión</Text>
                 {TABS.slice(1).map(t => (
-                  <TouchableOpacity key={t.key} style={styles.shortcut} onPress={() => cambiarTab(t.key)}>
-                    <Ionicons name={t.icon} size={20} color={Colors.primary} />
-                    <Text style={styles.shortcutText}>Gestionar {t.label.toLowerCase()}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={Colors.mutedText} />
+                  <TouchableOpacity
+                    key={t.key}
+                    style={[styles.shortcut, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                    onPress={() => cambiarTab(t.key)}
+                  >
+                    <Ionicons name={t.icon} size={20} color={colors.primary} />
+                    <Text style={[styles.shortcutText, { color: colors.darkText }]}>Gestionar {t.label.toLowerCase()}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={colors.mutedText} />
                   </TouchableOpacity>
                 ))}
               </>
             ) : (
               <>
-                <TouchableOpacity style={styles.newButton} onPress={() => abrirForm(tab)}>
-                  <Ionicons name="add" size={22} color={Colors.darker} />
-                  <Text style={styles.newButtonText}>Nuevo Registro</Text>
+                <TouchableOpacity style={[styles.newButton, { backgroundColor: colors.primary }]} onPress={() => abrirForm(tab)}>
+                  <Ionicons name="add" size={22} color={isDark ? Colors.darker : '#ffffff'} />
+                  <Text style={[styles.newButtonText, { color: isDark ? Colors.darker : '#ffffff' }]}>Nuevo Registro</Text>
                 </TouchableOpacity>
 
-                <View style={styles.searchBox}>
-                  <Ionicons name="search" size={18} color={Colors.placeholder} />
+                <View style={[styles.searchBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <Ionicons name="search" size={18} color={colors.placeholder} />
                   <TextInput
-                    style={styles.searchInput}
+                    style={[styles.searchInput, { color: colors.darkText }]}
                     placeholder={`Buscar en ${tabActual.label.toLowerCase()}...`}
-                    placeholderTextColor={Colors.placeholder}
+                    placeholderTextColor={colors.placeholder}
                     value={search}
                     onChangeText={setSearch}
                   />
                 </View>
-                <Text style={styles.countText}>{items.length} registro(s)</Text>
+                <Text style={[styles.countText, { color: colors.mutedText }]}>{items.length} registro(s)</Text>
 
                 {items.length === 0 ? (
                   <View style={styles.empty}>
-                    <Ionicons name={tabActual.icon} size={40} color={Colors.placeholder} />
-                    <Text style={styles.emptyText}>No hay {tabActual.label.toLowerCase()} registrados</Text>
+                    <Ionicons name={tabActual.icon} size={40} color={colors.placeholder} />
+                    <Text style={[styles.emptyText, { color: colors.mutedText }]}>No hay {tabActual.label.toLowerCase()} registrados</Text>
                   </View>
                 ) : (
                   items.map(i => (
-                    <View key={i.key} style={styles.card}>
+                    <View key={i.key} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>{i.title}</Text>
+                        <Text style={[styles.cardTitle, { color: colors.darkText }]}>{i.title}</Text>
                         {i.lines.map((l, idx) => (
-                          <Text key={idx} style={styles.cardLine}>{l}</Text>
+                          <Text key={idx} style={[styles.cardLine, { color: colors.mutedText }]}>{l}</Text>
                         ))}
                         {i.badge && (
-                          <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{i.badge}</Text>
+                          <View style={[styles.badge, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.1)' : 'rgba(2, 132, 199, 0.12)' }]}>
+                            <Text style={[styles.badgeText, { color: colors.primary }]}>{i.badge}</Text>
                           </View>
                         )}
                       </View>
                       <View style={styles.cardActions}>
                         {i.extra && (
-                          <TouchableOpacity style={styles.editButton} onPress={i.extra.onPress} accessibilityLabel={i.extra.label}>
-                            <Ionicons name={i.extra.icon} size={18} color={Colors.primary} />
+                          <TouchableOpacity
+                            style={[styles.editButton, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(2, 132, 199, 0.12)' }]}
+                            onPress={i.extra.onPress}
+                            accessibilityLabel={i.extra.label}
+                          >
+                            <Ionicons name={i.extra.icon} size={18} color={colors.primary} />
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity style={styles.editButton} onPress={i.onEdit} accessibilityLabel="Editar">
-                          <Ionicons name="create-outline" size={18} color={Colors.primary} />
+                        <TouchableOpacity
+                          style={[styles.editButton, { backgroundColor: isDark ? 'rgba(0, 212, 255, 0.08)' : 'rgba(2, 132, 199, 0.12)' }]}
+                          onPress={i.onEdit}
+                          accessibilityLabel="Editar"
+                        >
+                          <Ionicons name="create-outline" size={18} color={colors.primary} />
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.deleteButton} onPress={i.onDelete} accessibilityLabel="Eliminar">
                           <Ionicons name="trash-outline" size={18} color={MetricColors.danger} />
@@ -805,7 +838,7 @@ export default function AdminScreen() {
           {/* Recorrido (solo al crear): se diseña a pantalla completa y aquí se ve el resumen */}
           {form.tipo === 'rutas' && !form.registro && (
             <View>
-              <Text style={[styles.sectionTitle, { marginTop: 4, marginBottom: 6 }]}>Recorrido</Text>
+              <Text style={[styles.sectionTitle, { color: colors.darkText, marginTop: 4, marginBottom: 6 }]}>Recorrido</Text>
               {paradasNuevas.length > 0 && (
                 <>
                   <MapaRuta paradas={paradasNuevas} height={180} onRuta={setInfoRuta} />

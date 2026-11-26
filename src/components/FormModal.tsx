@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { Colors } from '../constants/Colors';
+import { useTheme } from '../context/ThemeContext';
 import { styles } from '../styles/form.styles';
 
 export type Opcion = { value: string; label: string };
@@ -53,6 +53,7 @@ const validar = (campos: Campo[], v: Valores) => {
 };
 
 export default function FormModal({ visible, titulo, campos, iniciales, onCerrar, onGuardar, children }: FormModalProps) {
+  const { colors, isDark } = useTheme();
   const [valores, setValores] = useState<Valores>(iniciales);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -62,6 +63,7 @@ export default function FormModal({ visible, titulo, campos, iniciales, onCerrar
   // Cada vez que se abre el modal arranca con los valores del registro (o vacío)
   useEffect(() => {
     if (visible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValores(iniciales);
       setError('');
     }
@@ -93,41 +95,59 @@ export default function FormModal({ visible, titulo, campos, iniciales, onCerrar
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
       {/* Android es edge-to-edge: sin behavior los campos de abajo quedan tapados por el teclado */}
       <KeyboardAvoidingView style={styles.overlay} behavior="padding">
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{titulo}</Text>
-            <TouchableOpacity onPress={onCerrar} accessibilityLabel="Cerrar">
-              <Ionicons name="close" size={24} color={Colors.mutedText} />
-            </TouchableOpacity>
+            <Text style={[styles.sheetTitle, { color: colors.darkText }]}>{titulo}</Text>
           </View>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps="handled">
             {lista.map(c => (
               <View key={c.key} style={styles.field}>
-                <Text style={styles.label}>
+                <Text style={[styles.label, { color: colors.darkText }]}>
                   {c.label}
                   {c.requerido ? ' *' : ''}
                 </Text>
                 {c.tipo === 'select' ? (
                   <TouchableOpacity
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDark ? colors.inputBg : '#f8fafc',
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
                     onPress={() => {
                       setFiltro('');
                       setSelectAbierto(c);
                     }}
                   >
-                    <Text style={[styles.inputText, !valores[c.key] && { color: Colors.placeholder }]} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.inputText,
+                        { color: colors.darkText },
+                        !valores[c.key] && { color: colors.placeholder },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {c.opciones?.find(o => o.value === valores[c.key])?.label || c.placeholder || 'Seleccionar...'}
                     </Text>
-                    <Ionicons name="chevron-down" size={18} color={Colors.mutedText} />
+                    <Ionicons name="chevron-down" size={18} color={colors.mutedText} />
                   </TouchableOpacity>
                 ) : (
                   <TextInput
-                    style={[styles.input, styles.inputText]}
+                    style={[
+                      styles.input,
+                      styles.inputText,
+                      {
+                        backgroundColor: isDark ? colors.inputBg : '#f8fafc',
+                        borderColor: colors.cardBorder,
+                        color: colors.darkText,
+                      },
+                    ]}
                     value={valores[c.key] || ''}
                     onChangeText={t => cambiar(c.key, t)}
                     placeholder={c.placeholder || (c.tipo === 'fecha' ? 'AAAA-MM-DD' : '')}
-                    placeholderTextColor={Colors.placeholder}
+                    placeholderTextColor={colors.placeholder}
                     secureTextEntry={c.tipo === 'clave'}
                     keyboardType={c.tipo === 'numero' ? 'number-pad' : c.tipo === 'correo' ? 'email-address' : 'default'}
                     autoCapitalize={c.tipo === 'correo' || c.tipo === 'clave' ? 'none' : 'sentences'}
@@ -142,11 +162,29 @@ export default function FormModal({ visible, titulo, campos, iniciales, onCerrar
           </ScrollView>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={[styles.button, styles.buttonCancel]} onPress={onCerrar}>
-              <Text style={styles.buttonCancelText}>Cancelar</Text>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.buttonCancel,
+                {
+                  borderColor: colors.cardBorder,
+                  backgroundColor: isDark ? 'transparent' : '#f1f5f9',
+                },
+              ]}
+              onPress={onCerrar}
+            >
+              <Text style={[styles.buttonCancelText, { color: colors.mutedText }]}>Cancelar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.buttonSave]} onPress={guardar} disabled={guardando}>
-              {guardando ? <ActivityIndicator color={Colors.darker} /> : <Text style={styles.buttonSaveText}>Guardar</Text>}
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSave, { backgroundColor: colors.primary }]}
+              onPress={guardar}
+              disabled={guardando}
+            >
+              {guardando ? (
+                <ActivityIndicator color="#081120" />
+              ) : (
+                <Text style={[styles.buttonSaveText, { color: '#081120' }]}>Guardar</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -155,17 +193,26 @@ export default function FormModal({ visible, titulo, campos, iniciales, onCerrar
       {/* Selector con buscador */}
       <Modal visible={!!selectAbierto} animationType="fade" transparent onRequestClose={() => setSelectAbierto(null)}>
         <View style={styles.overlay}>
-          <View style={[styles.sheet, { maxHeight: '70%' }]}>
+          <View style={[styles.sheet, { maxHeight: '70%', backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{selectAbierto?.label}</Text>
+              <Text style={[styles.sheetTitle, { color: colors.darkText }]}>{selectAbierto?.label}</Text>
               <TouchableOpacity onPress={() => setSelectAbierto(null)} accessibilityLabel="Cerrar">
-                <Ionicons name="close" size={24} color={Colors.mutedText} />
+                <Ionicons name="close" size={24} color={colors.mutedText} />
               </TouchableOpacity>
             </View>
             <TextInput
-              style={[styles.input, styles.inputText, { marginBottom: 10 }]}
+              style={[
+                styles.input,
+                styles.inputText,
+                {
+                  marginBottom: 10,
+                  backgroundColor: isDark ? colors.inputBg : '#f8fafc',
+                  borderColor: colors.cardBorder,
+                  color: colors.darkText,
+                },
+              ]}
               placeholder="Buscar..."
-              placeholderTextColor={Colors.placeholder}
+              placeholderTextColor={colors.placeholder}
               value={filtro}
               onChangeText={setFiltro}
             />
@@ -173,19 +220,27 @@ export default function FormModal({ visible, titulo, campos, iniciales, onCerrar
               data={[...(selectAbierto?.requerido ? [] : [{ value: '', label: 'Sin asignar' }]), ...opcionesFiltradas]}
               keyExtractor={o => o.value || 'vacio'}
               keyboardShouldPersistTaps="handled"
-              ListEmptyComponent={<Text style={styles.emptyOption}>Sin resultados</Text>}
+              ListEmptyComponent={<Text style={[styles.emptyOption, { color: colors.mutedText }]}>Sin resultados</Text>}
               renderItem={({ item }) => {
                 const activo = selectAbierto && valores[selectAbierto.key] === item.value;
                 return (
                   <TouchableOpacity
-                    style={styles.option}
+                    style={[styles.option, { borderBottomColor: colors.cardBorder }]}
                     onPress={() => {
                       if (selectAbierto) cambiar(selectAbierto.key, item.value);
                       setSelectAbierto(null);
                     }}
                   >
-                    <Text style={[styles.optionText, activo && { color: Colors.primary }]}>{item.label}</Text>
-                    {activo && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+                    <Text
+                      style={[
+                        styles.optionText,
+                        { color: colors.darkText },
+                        activo && { color: colors.primary, fontWeight: '700' },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                    {activo && <Ionicons name="checkmark" size={18} color={colors.primary} />}
                   </TouchableOpacity>
                 );
               }}

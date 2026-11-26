@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
 
 import { Colors } from '../constants/Colors';
+import { useTheme } from '../context/ThemeContext';
 import { styles } from '../styles/dialogo.styles';
 
 /**
@@ -64,6 +65,7 @@ const cerrarActual = () => {
 };
 
 export function DialogoHost() {
+  const { colors, isDark } = useTheme();
   const [actual, setActual] = useState<Dialogo | null>(cola[0] ?? null);
 
   useEffect(() => {
@@ -96,12 +98,22 @@ export function DialogoHost() {
     >
       {/* Tocar fuera equivale a cancelar solo si hay un botón de cancelar */}
       <Pressable style={styles.overlay} onPress={cancelar ? () => pulsar(cancelar) : undefined}>
-        <Pressable style={styles.card} onPress={() => {}} accessibilityRole="alert">
+        <Pressable
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
+            },
+          ]}
+          onPress={() => {}}
+          accessibilityRole="alert"
+        >
           <View style={[styles.iconCircle, { backgroundColor: `${color}1f`, borderColor: `${color}55` }]}>
             <Ionicons name={icono} size={30} color={color} />
           </View>
-          <Text style={styles.titulo}>{actual.titulo}</Text>
-          {!!actual.mensaje && <Text style={styles.mensaje}>{actual.mensaje}</Text>}
+          <Text style={[styles.titulo, { color: colors.darkText }]}>{actual.titulo}</Text>
+          {!!actual.mensaje && <Text style={[styles.mensaje, { color: colors.mutedText }]}>{actual.mensaje}</Text>}
 
           <View style={[styles.botones, apilados && styles.botonesApilados]}>
             {actual.botones.map((b, i) => {
@@ -115,10 +127,10 @@ export function DialogoHost() {
                   style={[
                     styles.boton,
                     !apilados && { flex: 1 },
-                    esCancelar && styles.botonCancelar,
+                    esCancelar && [styles.botonCancelar, { borderColor: colors.cardBorder, backgroundColor: isDark ? 'transparent' : '#f1f5f9' }],
                     esPeligro && styles.botonPeligro,
-                    principal && !esPeligro && styles.botonPrincipal,
-                    !esCancelar && !esPeligro && !principal && styles.botonSecundario,
+                    principal && !esPeligro && [styles.botonPrincipal, { backgroundColor: colors.primary }],
+                    !esCancelar && !esPeligro && !principal && [styles.botonSecundario, { backgroundColor: isDark ? colors.card : '#f1f5f9' }],
                   ]}
                   onPress={() => pulsar(b)}
                   activeOpacity={0.8}
@@ -126,9 +138,10 @@ export function DialogoHost() {
                   <Text
                     style={[
                       styles.botonTexto,
-                      esCancelar && { color: Colors.mutedText },
+                      esCancelar && { color: colors.mutedText },
                       esPeligro && { color: '#fff' },
-                      principal && !esPeligro && { color: Colors.darker },
+                      principal && !esPeligro && { color: '#081120' },
+                      !esCancelar && !esPeligro && !principal && { color: colors.darkText },
                     ]}
                   >
                     {b.text}

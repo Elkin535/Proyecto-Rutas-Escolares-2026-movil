@@ -70,7 +70,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#040c18',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -83,11 +83,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: Colors.primary,
+    color: '#00d4ff',
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.mutedText,
+    color: '#94a3b8',
     marginTop: 4,
     marginBottom: 32,
   },
@@ -97,6 +97,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-    color: Colors.mutedText,
+    color: '#94a3b8',
   },
 });

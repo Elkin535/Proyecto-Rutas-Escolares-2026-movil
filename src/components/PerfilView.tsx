@@ -3,13 +3,14 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { Colors } from '../constants/Colors';
+import { useTheme } from '../context/ThemeContext';
 import { fetchApi } from '../services/api';
 import { cerrarSesionCompleta } from '../services/push';
 import { avisar } from '../services/ruta';
 import { RutaColors, styles } from '../styles/ruta.styles';
 import { CustomButton } from './CustomButton';
 import FormModal, { Campo, Valores } from './FormModal';
+import { ThemeSwitch } from './ThemeSwitch';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -28,6 +29,7 @@ const CAMPOS_CLAVE: Campo[] = [
 export default function PerfilView({ usuario, extras = [] }: PerfilViewProps) {
   const router = useRouter();
   const [cambiandoClave, setCambiandoClave] = useState(false);
+  const { isDark, colors, toggleTheme } = useTheme();
 
   const cerrarSesion = async () => {
     await cerrarSesionCompleta();
@@ -58,32 +60,60 @@ export default function PerfilView({ usuario, extras = [] }: PerfilViewProps) {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.profileAvatar}>
-        <Ionicons name="person-outline" size={40} color={Colors.primary} />
+      {/* Avatar e información de cabecera */}
+      <View style={[styles.profileAvatar, { borderColor: colors.primary }]}>
+        <Ionicons name="person-outline" size={40} color={colors.primary} />
       </View>
-      <Text style={styles.profileName}>{`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}</Text>
-      <Text style={[styles.mutedText, { textAlign: 'center', marginBottom: 20 }]}>{usuario?.nombreRol}</Text>
+      <Text style={[styles.profileName, { color: colors.darkText }]}>
+        {`${usuario?.nombre || ''} ${usuario?.apellido || ''}`.trim()}
+      </Text>
+      <Text style={[styles.mutedText, { textAlign: 'center', marginBottom: 20, color: colors.mutedText }]}>
+        {usuario?.nombreRol}
+      </Text>
 
-      <View style={styles.card}>
+      {/* Datos del usuario */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         {filas.map((f, i) => (
           <View key={f.label}>
-            {i > 0 && <View style={styles.divider} />}
+            {i > 0 && <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />}
             <View style={styles.profileRow}>
-              <Ionicons name={f.icon} size={20} color={Colors.primary} />
+              <Ionicons name={f.icon} size={20} color={colors.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.mutedText}>{f.label}</Text>
-                <Text style={[styles.name, { fontSize: 15, fontWeight: '600' }]}>{f.value}</Text>
+                <Text style={[styles.mutedText, { color: colors.mutedText }]}>{f.label}</Text>
+                <Text style={[styles.name, { fontSize: 15, fontWeight: '600', color: colors.darkText }]}>
+                  {f.value}
+                </Text>
               </View>
             </View>
           </View>
         ))}
       </View>
 
+      {/* Modo de visualización: Modo oscuro / Modo claro con deslizante */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={styles.profileRow}>
+          <Ionicons
+            name={isDark ? 'moon-outline' : 'sunny-outline'}
+            size={22}
+            color={colors.primary}
+          />
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={[styles.mutedText, { color: colors.mutedText }]}>Modo de visualización</Text>
+            <Text style={[styles.name, { fontSize: 15, fontWeight: '600', color: colors.darkText }]}>
+              {isDark ? 'Modo oscuro' : 'Modo claro'}
+            </Text>
+          </View>
+          <ThemeSwitch isDark={isDark} onToggle={toggleTheme} />
+        </View>
+      </View>
+
+      {/* Botones de acción */}
       <CustomButton
         title="Cambiar contraseña"
         onPress={() => setCambiandoClave(true)}
         variant="outline"
-        style={{ marginTop: 8 }}
+        style={{ marginTop: 8, borderColor: colors.primary }}
+        textStyle={{ color: colors.primary }}
       />
       <CustomButton
         title="Cerrar sesión"
